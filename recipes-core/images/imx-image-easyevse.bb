@@ -16,6 +16,7 @@ IMAGE_INSTALL += " \
         python3-dateutil \
         python3-iso15118 \
         python3-sqlite3 \
+        python3-wheel \
         sqlite3 \
         everest-core \
         everest-admin-panel \
@@ -40,6 +41,7 @@ IMAGE_INSTALL += " \
         fbida \
         lumissil-hpgp-sdk \
         lms-eth2spi \
+        python3-spsdk \
         "
         
 INSANE_SKIP:everest-framework += "already-stripped"
