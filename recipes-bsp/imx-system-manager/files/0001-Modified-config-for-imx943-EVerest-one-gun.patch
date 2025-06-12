@@ -1,0 +1,52 @@
+From 9ebfeb05cff84319f7ebac9d8d24c5a2e55e4335 Mon Sep 17 00:00:00 2001
+From: OTS <octavian-tiberiu.sirbu@nxp.com>
+Date: Fri, 11 Apr 2025 17:37:39 +0300
+Subject: [PATCH] Modified config for imx943 EVerest one-gun
+
+Signed-off-by: OTS <octavian-tiberiu.sirbu@nxp.com>
+---
+ configs/mx94evk.cfg | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/configs/mx94evk.cfg b/configs/mx94evk.cfg
+index 0f9b090..c9cfa46 100755
+--- a/configs/mx94evk.cfg
++++ b/configs/mx94evk.cfg
+@@ -639,7 +639,6 @@ IRQSTEER_M7_1       OWNER
+ LPIT3               OWNER
+ LPTPM2              OWNER
+ LPTPM3              OWNER
+-LPUART12            OWNER, test
+ MSGINTR5            OWNER
+ MSGINTR6            OWNER
+ MSGINTR7            OWNER
+@@ -659,9 +658,6 @@ XSPI_RESPONDR       OWNER
+ 
+ # Pins
+ 
+-PIN_GPIO_IO26        OWNER
+-PIN_GPIO_IO27        OWNER
+-
+ # Memory
+ 
+ M7MIX1              DATA, begin=0x020280000, end=0x02037FFFF
+@@ -1025,6 +1021,7 @@ LPUART6             OWNER
+ LPUART7             OWNER
+ LPUART9             OWNER
+ LPUART10            OWNER
++LPUART12            OWNER
+ LVDS                OWNER
+ MU2_A               OWNER
+ MU3_A               OWNER
+@@ -1221,6 +1218,8 @@ PIN_GPIO_IO20        OWNER
+ PIN_GPIO_IO21        OWNER
+ PIN_GPIO_IO22        OWNER
+ PIN_GPIO_IO23        OWNER
++PIN_GPIO_IO26        OWNER
++PIN_GPIO_IO27        OWNER
+ PIN_GPIO_IO28        OWNER
+ PIN_GPIO_IO29        OWNER
+ PIN_GPIO_IO30        OWNER
+-- 
+2.34.1
+
