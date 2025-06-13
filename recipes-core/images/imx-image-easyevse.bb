@@ -46,17 +46,26 @@ IMAGE_INSTALL += " \
         
 INSANE_SKIP:everest-framework += "already-stripped"
 
+# Security-related packages
+IMAGE_INSTALL += " \
+    se05x \
+    opensc \
+    p11-kit \
+    softhsm \
+    "
 
 ROOTFS_POSTPROCESS_COMMAND:append:mx93-nxp-bsp = " \
     install_demo; \
     install_demo_easyevse; \
     prepare_sigb_network_interface; \
+    configure_security; \
     "
 
 ROOTFS_POSTPROCESS_COMMAND:append:mx8-nxp-bsp = " \
     install_demo; \
     install_demo_easyevse; \
     prepare_sigb_network_interface; \
+    configure_security; \
     "
 
 install_demo_easyevse() {
@@ -89,4 +98,33 @@ prepare_sigb_network_interface() {
 	touch ${IMAGE_ROOTFS}${sysconfdir}/wpa_supplicant/wpa_supplicant-mlan0.conf
 	printf "ctrl_interface=/var/run/wpa_supplicant\nctrl_interface_group=0\nupdate_config=1\nap_scan=1\n\nnetwork={\n	key_mgmt=WPA-PSK\n	ssid=\"NAME-OF-YOUR-NETWORK\"\n	psk=\"PASSWORD\"\n}\n" >> ${IMAGE_ROOTFS}${sysconfdir}/wpa_supplicant/wpa_supplicant-mlan0.conf
 
+}
+
+configure_security() {
+    PKCS11_MODULES_PATH=${IMAGE_ROOTFS}${datadir}/p11-kit/modules
+
+    mkdir -p ${PKCS11_MODULES_PATH}
+
+    # Only system configuration, ignore user configuration
+    echo "user-config: none" >> ${IMAGE_ROOTFS}${sysconfdir}/pkcs11/pkcs11.conf
+
+    # Remove any unneeded preconfigured module
+    rm -rf ${PKCS11_MODULES_PATH}/*
+
+    # SE05x
+    echo "module: /usr/lib/libsss_pkcs11.so" >> ${PKCS11_MODULES_PATH}/sss_pkcs11.module
+    echo "priority: 10" >> ${PKCS11_MODULES_PATH}/sss_pkcs11.module
+    echo "critical: yes" >> ${PKCS11_MODULES_PATH}/sss_pkcs11.module
+
+    # TEE
+    echo "module: /usr/lib/libckteec.so.0" >> ${PKCS11_MODULES_PATH}/libckteec.module
+    echo "priority: 3" >> ${PKCS11_MODULES_PATH}/libckteec.module
+    echo "critical: no" >> ${PKCS11_MODULES_PATH}/libckteec.module
+    echo "enable-in: stx_evse_*" >> ${PKCS11_MODULES_PATH}/libckteec.module
+
+    # SoftHSMv2
+    echo "module: /usr/lib/softhsm/libsofthsm2.so" >> ${PKCS11_MODULES_PATH}/softhsm2.module
+    echo "priority: 2" >> ${PKCS11_MODULES_PATH}/softhsm2.module
+    echo "critical: no" >> ${PKCS11_MODULES_PATH}/softhsm2.module
+    echo "enable-in: stx_evse_*" >> ${PKCS11_MODULES_PATH}/softhsm2.module
 }
