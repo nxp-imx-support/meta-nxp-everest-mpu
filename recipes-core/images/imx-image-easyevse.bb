@@ -59,6 +59,7 @@ ROOTFS_POSTPROCESS_COMMAND:append:mx93-nxp-bsp = " \
     install_demo_easyevse; \
     prepare_sigb_network_interface; \
     configure_security; \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'LVDS_DISPLAY_SUPPORT', 'calibrate_lvds;', '', d)} \
     "
 
 ROOTFS_POSTPROCESS_COMMAND:append:mx8-nxp-bsp = " \
@@ -127,4 +128,18 @@ configure_security() {
     echo "priority: 2" >> ${PKCS11_MODULES_PATH}/softhsm2.module
     echo "critical: no" >> ${PKCS11_MODULES_PATH}/softhsm2.module
     echo "enable-in: stx_evse_*" >> ${PKCS11_MODULES_PATH}/softhsm2.module
+}
+
+calibrate_lvds() {
+	if [ ! -f "${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules" ]
+	then
+		touch ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		echo '# Create a symlink to any touchscreen input device' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="input:*-e0*,3,*a0,1,*18,*", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="ads7846", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		echo '# i.MX specific touchscreen rules' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+	fi
+	echo '# LVDS calibration matrix' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+	echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1",ENV{LIBINPUT_CALIBRATION_MATRIX}="4.034244 -0.004270 -0.004517 -0.016081 4.132606 -0.011880"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
 }
