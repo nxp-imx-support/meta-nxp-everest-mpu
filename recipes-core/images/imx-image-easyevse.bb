@@ -46,6 +46,14 @@ IMAGE_INSTALL += " \
         
 INSANE_SKIP:everest-framework += "already-stripped"
 
+# Onnxruntime dependency eigen download path is unreliable.
+# There are some possible fixes in upstream, need to adjust them for our configuration
+# https://github.com/belle2/externals/commit/b756b70798255ab3c28e5c5ad80aa328a021f011
+# For now, simply remove it from the image, by removing the entire ML packagegroup
+IMAGE_INSTALL:remove = "\
+  packagegroup-imx-ml \
+"
+
 # Security-related packages
 IMAGE_INSTALL += " \
     se05x \
