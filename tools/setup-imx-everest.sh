@@ -115,6 +115,10 @@ for layer in $(eval echo ${EXTRA_LAYER_LIST}); do
 	fi
 done
 
+# EdgeLock2Go support
+echo "EDGELOCK2GO_HOSTNAME = \"w4dx9d3ansxis0hw.device-link.edgelock2go.com\"" >> $BUILD_DIR/conf/local.conf
+echo "EDGELOCK2GO_PORT = \"443\"" >> $BUILD_DIR/conf/local.conf
+
 echo
 
 imx-easyevse_exit_message
