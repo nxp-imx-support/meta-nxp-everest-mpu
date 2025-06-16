@@ -62,6 +62,10 @@ IMAGE_INSTALL += " \
     softhsm \
     "
 
+# imx-secure-enclave does not build, so remove it
+IMAGE_INSTALL:remove = " \
+  packagegroup-imx-security \
+"
 ROOTFS_POSTPROCESS_COMMAND:append:mx93-nxp-bsp = " \
     install_demo; \
     install_demo_easyevse; \
