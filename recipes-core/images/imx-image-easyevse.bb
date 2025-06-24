@@ -78,22 +78,18 @@ IMAGE_INSTALL += " \
     openssl-provider-se050 \
 "
 
+ROOTFS_POSTPROCESS_COMMAND:append = " \
+    install_demo; \
+    install_demo_easyevse; \
+    prepare_sigb_network_interface; \
+    configure_security; \
+"
 
 ROOTFS_POSTPROCESS_COMMAND:append:mx93-nxp-bsp = " \
-    install_demo; \
-    install_demo_easyevse; \
-    prepare_sigb_network_interface; \
-    configure_security; \
     ${@bb.utils.contains('DISTRO_FEATURES', 'LVDS_DISPLAY_SUPPORT', 'calibrate_lvds;', '', d)} \
-    "
+"
 
-ROOTFS_POSTPROCESS_COMMAND:append:mx8-nxp-bsp = " \
-    install_demo; \
-    install_demo_easyevse; \
-    prepare_sigb_network_interface; \
-    configure_security; \
-    "
-
+# TBD: do we need the install_demo* commands?
 install_demo_easyevse() {
 	printf "\n\n[output]\nname=DSI-1\nmode=1920x1080@60\ntransform=rotate-270" >> ${IMAGE_ROOTFS}${sysconfdir}/xdg/weston/weston.ini
 }
