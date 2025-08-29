@@ -54,7 +54,7 @@ done
 RELEASEPROGNAME="./imx-setup-release.sh"
 
 # Supported yocto version
-YOCTOVERSION="styhead"
+YOCTOVERSION="styhead walnascar"
 
 # NXP EVerest / EVSE layer list
 LAYER_LIST=" \

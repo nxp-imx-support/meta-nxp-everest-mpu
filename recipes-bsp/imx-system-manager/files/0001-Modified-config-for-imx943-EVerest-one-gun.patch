@@ -4,6 +4,7 @@ Date: Fri, 11 Apr 2025 17:37:39 +0300
 Subject: [PATCH] Modified config for imx943 EVerest one-gun
 
 Signed-off-by: OTS <octavian-tiberiu.sirbu@nxp.com>
+Upstream-Status: Pending
 ---
  configs/mx94evk.cfg | 7 +++----
  1 file changed, 3 insertions(+), 4 deletions(-)
