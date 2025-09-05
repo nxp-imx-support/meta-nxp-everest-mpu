@@ -69,6 +69,7 @@ active_modules:
   SigboardNXP0:
     config_module:
       baud_rate: 115200
+      meter_present: true
       caps_max_current_A: 16
       caps_min_current_A: 16
       serial_port: /dev/ttyLP2

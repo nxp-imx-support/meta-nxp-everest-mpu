@@ -120,6 +120,7 @@ active_modules:
     connections: {}
     config_module:
       baud_rate: 115200
+      meter_present: true
       caps_max_current_A: 32
       caps_min_current_A: 0
       serial_port: /dev/ttyLP2
