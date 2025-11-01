@@ -101,7 +101,7 @@ for layer in $(eval echo $LAYER_LIST); do
         # check if layer is compatible with supported yocto version.
         # if not, make it so.
         conffile_path="${append_layer}/conf/layer.conf"
-        yocto_compatible=`grep "LAYERSERIES_COMPAT" "${conffile_path}" | grep "${YOCTOVERSION}"`
+        yocto_compatible=`grep "LAYERSERIES_COMPAT" "${conffile_path}" | grep "${YOCTOVERSION}" || true`
         if [ -z "${yocto_compatible}" ]; then
 		    sed -E "/LAYERSERIES_COMPAT/s/(\".*)\"/\1 $YOCTOVERSION\"/g" -i "${conffile_path}"
 		    echo Layer ${layer} updated for ${YOCTOVERSION}.
