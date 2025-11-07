@@ -43,7 +43,7 @@ IMAGE_INSTALL += " \
         lms-eth2spi \
         python3-spsdk \
         "
-        
+
 INSANE_SKIP:everest-framework += "already-stripped"
 
 # Onnxruntime dependency eigen download path is unreliable.
