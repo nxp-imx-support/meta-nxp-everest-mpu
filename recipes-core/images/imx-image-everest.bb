@@ -42,6 +42,7 @@ IMAGE_INSTALL += " \
         lumissil-hpgp-sdk \
         lms-eth2spi \
         python3-spsdk \
+        gui-guider \
         "
 
 INSANE_SKIP:everest-framework += "already-stripped"
