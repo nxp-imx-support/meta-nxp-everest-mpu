@@ -1,0 +1,28 @@
+From 7fc38573695a9f9d8aa5d87873f6474dab650b73 Mon Sep 17 00:00:00 2001
+From: Sachin Saxena <sachin.saxena@oss.nxp.com>
+Date: Thu, 11 Sep 2025 09:11:47 +0530
+Subject: [PATCH 02/10] Change RFID token Provider to PN7160TokenProvider
+
+Upstream-Status: Pending
+Signed-off-by: Nikhil Gupta <nikhil.gupta@nxp.com>
+Signed-off-by: Sachin Saxena <sachin.saxena@oss.nxp.com>
+---
+ modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf b/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
+index f32cd8dc..2e5b99dd 100644
+--- a/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
++++ b/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
+@@ -53,7 +53,7 @@ NXPLOG_TML_LOGLEVEL=0x00
+ # 0x01 - Not Used, kept to align with Android code
+ # 0x02 - ALT_I2C
+ # 0x03 - ALT_SPI
+-NXP_TRANSPORT=0x02
++NXP_TRANSPORT=0x00
+ 
+ ###############################################################################
+ # Nfc Device Node name
+-- 
+2.43.0
+

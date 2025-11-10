@@ -1,0 +1,564 @@
+From 3a576965dac396794e0094d73a3bfd9a9aa1484e Mon Sep 17 00:00:00 2001
+From: Sachin Saxena <sachin.saxena@oss.nxp.com>
+Date: Thu, 11 Sep 2025 09:00:59 +0530
+Subject: [PATCH 01/10] Integrated config file for basic charging and ocpp
+
+Upstream-Status: Pending
+Signed-off-by: Sachin Saxena <sachin.saxena@oss.nxp.com>
+Signed-off-by: Lalit Saini <lalit.saini@nxp.com>
+---
+ ...g-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml | 542 ++++++++++++++++++
+ 1 file changed, 542 insertions(+)
+ create mode 100644 config/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
+
+diff --git a/config/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml b/config/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
+new file mode 100644
+index 00000000..b833d324
+--- /dev/null
++++ b/config/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
+@@ -0,0 +1,542 @@
++settings:
++  telemetry_enabled: true
++active_modules:
++################################################################
++  EvseManager1:
++    mapping:
++      module:
++        evse: 1
++    config_module:
++      ac_enforce_hlc: false
++      ac_hlc_enabled: false
++      ac_hlc_use_5percent: false
++      ac_nominal_voltage: 230
++      ac_with_soc: false
++      autocharge_use_slac_instead_of_hlc: false
++      cable_check_enable_imd_self_test: false
++      cable_check_wait_number_of_imd_measurements: 1
++      charge_mode: AC
++      connector_id: 1
++      dbg_hlc_auth_after_tstep: false
++      dc_isolation_voltage_V: 0
++      disable_authentication: false
++      enable_autocharge: false
++      ev_receipt_required: false
++      evse_id: DE*PNX*E1234567*1
++      evse_id_din: 49A80737A45678
++      external_ready_to_start_charging: false
++      hack_allow_bpt_with_iso2: false
++      hack_fix_hlc_integer_current_requests: false
++      hack_pause_imd_during_precharge: false
++      hack_present_current_offset: 0
++      hack_simplified_mode_limit_10A: false
++      hack_skoda_enyaq: false
++      hack_sleep_in_cable_check: 0
++      hack_sleep_in_cable_check_volkswagen: 0
++      has_ventilation: false
++      initial_meter_value_timeout_ms: 5000
++      logfile_suffix: session_uuid
++      max_current_export_A: 32
++      max_current_import_A: 32
++      payment_enable_contract: false
++      payment_enable_eim: false
++      request_zero_power_in_idle: false
++      sae_j2847_2_bpt_enabled: false
++      sae_j2847_2_bpt_mode: V2G
++      session_logging: true
++      session_logging_path: /tmp/everest
++      session_logging_xml: true
++      soft_over_current_measurement_noise_A: 0.5
++      soft_over_current_tolerance_percent: 10
++      switch_3ph1ph_cp_state: X1
++      switch_3ph1ph_delay_s: 10
++      uk_smartcharging_random_delay_at_any_change: false
++      uk_smartcharging_random_delay_enable: false
++      uk_smartcharging_random_delay_max_duration: 600
++    connections:
++      bsp:
++        - implementation_id: board_support
++          module_id: SigboardNXP1
++      powermeter_grid_side:
++        - module_id: yeti_driver_1
++          implementation_id: powermeter
++      slac:
++        - module_id: slac
++          implementation_id: evse
++    module: EvseManager
++  yeti_driver_1:
++    module: YetiSimulator
++    mapping:
++      module:
++        evse: 1
++    config_module:
++      connector_id: 1
++  slac:
++    module: SlacSimulator
++##################
++  SigboardNXP1:
++    config_module:
++      baud_rate: 115200
++      caps_max_current_A: 16
++      caps_min_current_A: 16
++      serial_port: /dev/ttyLP2
++    connections: {}
++    module: SigboardNXP
++################################################################
++  EvseManager2:
++    mapping:
++      module:
++        evse: 2
++    config_module:
++      ac_enforce_hlc: false
++      ac_hlc_enabled: false
++      ac_hlc_use_5percent: false
++      ac_nominal_voltage: 230
++      ac_with_soc: false
++      autocharge_use_slac_instead_of_hlc: false
++      cable_check_enable_imd_self_test: false
++      cable_check_wait_number_of_imd_measurements: 1
++      charge_mode: AC
++      connector_id: 2
++      dbg_hlc_auth_after_tstep: false
++      dc_isolation_voltage_V: 0
++      disable_authentication: false
++      enable_autocharge: false
++      ev_receipt_required: false
++      evse_id: DE*PNX*E1234567*1
++      evse_id_din: 49A80737A45678
++      external_ready_to_start_charging: false
++      hack_allow_bpt_with_iso2: false
++      hack_fix_hlc_integer_current_requests: false
++      hack_pause_imd_during_precharge: false
++      hack_present_current_offset: 0
++      hack_simplified_mode_limit_10A: false
++      hack_skoda_enyaq: false
++      hack_sleep_in_cable_check: 0
++      hack_sleep_in_cable_check_volkswagen: 0
++      has_ventilation: false
++      initial_meter_value_timeout_ms: 5000
++      logfile_suffix: session_uuid
++      max_current_export_A: 32
++      max_current_import_A: 32
++      payment_enable_contract: false
++      payment_enable_eim: false
++      request_zero_power_in_idle: true
++      sae_j2847_2_bpt_enabled: false
++      sae_j2847_2_bpt_mode: V2G
++      session_logging: true
++      session_logging_path: /tmp/everest
++      session_logging_xml: true
++      soft_over_current_measurement_noise_A: 0.5
++      soft_over_current_tolerance_percent: 10
++      switch_3ph1ph_cp_state: X1
++      switch_3ph1ph_delay_s: 10
++      uk_smartcharging_random_delay_at_any_change: false
++      uk_smartcharging_random_delay_enable: false
++      uk_smartcharging_random_delay_max_duration: 600
++    connections:
++      bsp:
++        - implementation_id: board_support
++          module_id: SigboardNXP2
++    module: EvseManager
++##################
++  SigboardNXP2:
++    config_module:
++      baud_rate: 115200
++      caps_max_current_A: 20
++      caps_min_current_A: 20
++      serial_port: /dev/ttyLP2
++    connections: {}
++    module: SigboardNXP
++################################################################
++
++  PN7160TokenProvider0:
++    config_implementation:
++      main:
++        debug: false
++        disable_nfc_rfid: false
++        token_debounce_interval_ms: 3000
++    connections: {}
++    module: PN7160TokenProvider
++
++################################################################
++  auth:
++    config_module:
++      connection_timeout: 60
++      ignore_connector_faults: false
++      master_pass_group_id: ''
++      prioritize_authorization_over_stopping_transaction: true
++      selection_algorithm: PlugEvents
++    connections:
++      evse_manager:
++        - implementation_id: evse
++          module_id: EvseManager1
++      token_provider:
++        - module_id: PN7160TokenProvider0
++          implementation_id: main
++        - module_id: ocpp
++          implementation_id: auth_provider
++      token_validator:
++        - module_id: ocpp
++          implementation_id: auth_validator
++      kvs:
++        - module_id: persistent_store
++          implementation_id: main
++    module: Auth
++###########
++  auth_dummy:
++    config_module:
++      connection_timeout: 100000
++      prioritize_authorization_over_stopping_transaction: true
++      selection_algorithm: FindFirst
++      ignore_connector_faults: true
++    connections:
++      evse_manager:
++        - implementation_id: evse
++          module_id: EvseManager2
++      token_provider:
++        - implementation_id: main
++          module_id: token_provider
++      token_validator:
++        - implementation_id: main
++          module_id: token_validator
++    module: Auth
++################################################################
++  token_provider:
++    config_implementation:
++      main:
++        timeout: 2
++        token: DEADBEEF
++    connections:
++      evse:
++        - implementation_id: evse
++          module_id: EvseManager2
++    module: DummyTokenProvider
++###########
++  token_validator:
++    config_implementation:
++      main:
++        sleep: 0.1
++        validation_reason: Token seems INVALID
++        validation_result: Invalid   # Accepted / Invalid 
++    connections: {}
++    module: DummyTokenValidator
++################################################################
++
++
++  persistent_store:
++    module: PersistentStore
++################################################################
++  ocpp:
++    module: OCPP201
++    connections:
++      evse_manager:
++        - module_id: EvseManager1
++          implementation_id: evse
++        - module_id: EvseManager2
++          implementation_id: evse
++      auth:
++        - module_id: auth
++          implementation_id: main
++      system:
++        - module_id: system
++          implementation_id: main
++      security:
++        - module_id: evse_security
++          implementation_id: main
++      evse_energy_sink:
++        - module_id: grid_connection_point
++          implementation_id: external_limits
++        - module_id: evse_manager_1_ocpp_sink
++          implementation_id: external_limits
++        - module_id: evse_manager_2_ocpp_sink
++          implementation_id: external_limits
++      reservation:
++        - module_id: auth
++          implementation_id: reservation
++################################################################
++  evse_security:
++    module: EvseSecurity
++    config_module:
++      private_key_password: "123456"
++################################################################
++  energy_manager:
++    config_module:
++      debug: false
++      nominal_ac_voltage: 230
++      schedule_interval_duration: 60
++      schedule_total_duration: 1
++      slice_ampere: 0.5
++      slice_watt: 500
++      switch_3ph1ph_max_nr_of_switches_per_session: 0
++      switch_3ph1ph_power_hysteresis_W: 200
++      switch_3ph1ph_switch_limit_stickyness: DontChange
++      switch_3ph1ph_time_hysteresis_s: 600
++      switch_3ph1ph_while_charging_mode: Never
++      update_interval: 1
++    connections:
++      energy_trunk:
++        - implementation_id: energy_grid
++          module_id: grid_connection_point
++    module: EnergyManager
++################################################################
++  evse_manager_1_ocpp_sink:
++    module: EnergyNode
++    mapping:
++      module:
++        evse: 1
++    config_module:
++      fuse_limit_A: 32.0
++      phase_count: 3
++    connections:
++      energy_consumer:
++        - module_id: EvseManager1
++          implementation_id: energy_grid
++###########
++  evse_manager_2_ocpp_sink:
++    module: EnergyNode
++    mapping:
++      module:
++        evse: 2
++    config_module:
++      fuse_limit_A: 32.0
++      phase_count: 3
++    connections:
++      energy_consumer:
++        - module_id: EvseManager2
++          implementation_id: energy_grid
++################################################################
++  evse_manager_1_api_sink:
++    module: EnergyNode
++    mapping:
++      module:
++        evse: 1
++    config_module:
++      fuse_limit_A: 32.0
++      phase_count: 3
++    connections:
++      energy_consumer:
++        - module_id: evse_manager_1_ocpp_sink
++          implementation_id: energy_grid
++      powermeter:
++        - module_id: yeti_driver_1
++          implementation_id: powermeter
++###########
++  evse_manager_2_api_sink:
++    module: EnergyNode
++    mapping:
++      module:
++        evse: 2
++    config_module:
++      fuse_limit_A: 32.0
++      phase_count: 3
++    connections:
++      energy_consumer:
++        - module_id: evse_manager_2_ocpp_sink
++          implementation_id: energy_grid
++      powermeter:
++        - module_id: SigboardNXP2
++          implementation_id: powermeter
++################################################################
++  grid_connection_point:
++    module: EnergyNode
++    mapping:
++      module:
++        evse: 0
++    config_module:
++      fuse_limit_A: 40.0
++      phase_count: 3
++    connections:
++      price_information: []
++      energy_consumer:
++        - module_id: evse_manager_1_api_sink
++          implementation_id: energy_grid
++        - module_id: evse_manager_2_api_sink
++          implementation_id: energy_grid
++################################################################
++  api:
++    module: API
++    connections:
++      evse_manager:
++        - module_id: EvseManager1
++          implementation_id: evse
++        - module_id: EvseManager2
++          implementation_id: evse
++      ocpp:
++        - module_id: ocpp
++          implementation_id: ocpp_generic
++      error_history:
++        - module_id: error_history
++          implementation_id: error_history
++      evse_energy_sink:
++        - module_id: evse_manager_1_api_sink
++          implementation_id: external_limits
++        - module_id: evse_manager_2_api_sink
++          implementation_id: external_limits
++################################################################
++  error_history:
++    module: ErrorHistory
++    config_implementation:
++      error_history:
++        database_path: /tmp/error_history.db
++  system:
++    module: System
++
++################################################################
++'x-module-layout':
++  EvseManager1:
++    position:
++      x: 16
++      y: 38
++    terminals:
++      bottom: []
++      left:
++        - id: ac_rcd
++          interface: ac_rcd
++          type: requirement
++        - id: bsp
++          interface: evse_board_support
++          type: requirement
++        - id: connector_lock
++          interface: connector_lock
++          type: requirement
++        - id: hlc
++          interface: ISO15118_charger
++          type: requirement
++        - id: imd
++          interface: isolation_monitor
++          type: requirement
++        - id: powermeter_car_side
++          interface: powermeter
++          type: requirement
++        - id: powermeter_grid_side
++          interface: powermeter
++          type: requirement
++        - id: powersupply_DC
++          interface: power_supply_DC
++          type: requirement
++        - id: slac
++          interface: slac
++          type: requirement
++      right:
++        - id: energy_grid
++          interface: energy
++          type: provide
++        - id: evse
++          interface: evse_manager
++          type: provide
++        - id: random_delay
++          interface: uk_random_delay
++          type: provide
++        - id: token_provider
++          interface: auth_token_provider
++          type: provide
++      top: []
++  SigboardNXP1:
++    position:
++      x: 1
++      y: 28
++    terminals:
++      bottom:
++        - id: powersupply_DC
++          interface: power_supply_DC
++          type: requirement
++        - id: imd
++          interface: isolation_monitor
++          type: requirement
++        - id: powermeter_car_side
++          interface: powermeter
++          type: requirement
++        - id: token_provider
++          interface: auth_token_provider
++          type: provide
++        - id: slac
++          interface: slac
++          type: requirement
++      left: []
++      right:
++        - id: board_support
++          interface: evse_board_support
++          type: provide
++        - id: powermeter
++          interface: powermeter
++          type: provide
++        - id: rcd
++          interface: ac_rcd
++          type: provide
++        - id: bsp
++          interface: board_support_AC
++          type: requirement
++        - id: powermeter_grid_side
++          interface: powermeter
++          type: requirement
++      top:
++        - id: energy_grid
++          interface: energy
++          type: provide
++        - id: evse
++          interface: evse_manager
++          type: provide
++  auth:
++    position:
++      x: 55
++      y: 36
++    terminals:
++      bottom: []
++      left:
++        - id: evse_manager
++          interface: evse_manager
++          type: requirement
++        - id: token_provider
++          interface: auth_token_provider
++          type: requirement
++        - id: token_validator
++          interface: auth_token_validator
++          type: requirement
++      right:
++        - id: main
++          interface: auth
++          type: provide
++        - id: reservation
++          interface: reservation
++          type: provide
++      top: []
++  energy_manager:
++    position:
++      x: 54
++      y: 20
++    terminals:
++      bottom: []
++      left:
++        - id: energy_trunk
++          interface: energy
++          type: requirement
++      right:
++        - id: main
++          interface: energy_manager
++          type: provide
++      top: []
++  grid_connection_point:
++    position:
++      x: 39
++      y: 27
++    terminals:
++      bottom: []
++      left:
++        - id: price_information
++          interface: energy_price_information
++          type: requirement
++        - id: powermeter
++          interface: powermeter
++          type: requirement
++      right:
++        - id: external_limits
++          interface: external_energy_limits
++          type: provide
++        - id: energy_consumer
++          interface: energy
++          type: requirement
++      top:
++        - id: energy_grid
++          interface: energy
++          type: provide
+-- 
+2.43.0
+
