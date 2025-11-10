@@ -83,7 +83,6 @@ ROOTFS_POSTPROCESS_COMMAND:append = " \
     install_demo; \
     prepare_sigb_network_interface; \
     configure_security; \
-    install_everest_dir; \
 "
 
 ROOTFS_POSTPROCESS_COMMAND:append = " \
