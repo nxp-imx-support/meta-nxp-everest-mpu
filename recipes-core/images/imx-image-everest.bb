@@ -153,15 +153,15 @@ configure_security() {
 }
 
 calibrate_lvds() {
-	if [ ! -f "${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules" ]
+	if [ ! -f "${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules" ]
 	then
-		touch ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-		echo '# Create a symlink to any touchscreen input device' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="input:*-e0*,3,*a0,1,*18,*", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="ads7846", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-		echo '# i.MX specific touchscreen rules' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+		touch ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+		echo '# Create a symlink to any touchscreen input device' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="input:*-e0*,3,*a0,1,*18,*", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ATTRS{modalias}=="ads7846", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+		echo '# i.MX specific touchscreen rules' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+		echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1", SYMLINK+="input/touchscreen0"' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
 	fi
-	echo '# LVDS calibration matrix' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
-	echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1",ENV{LIBINPUT_CALIBRATION_MATRIX}="4.034244 -0.004270 -0.004517 -0.016081 4.132606 -0.011880"' >> ${IMAGE_ROOTFS}${sysconfdir}//udev/rules.d/touchscreen.rules
+	echo '# LVDS calibration matrix' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+	echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{LIBINPUT_CALIBRATION_MATRIX}="4.023985 -0.041337 0.003694 -0.086464 4.011504 0.000577"' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
 }
