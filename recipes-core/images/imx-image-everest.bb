@@ -81,19 +81,14 @@ IMAGE_INSTALL += " \
 
 ROOTFS_POSTPROCESS_COMMAND:append = " \
     install_demo; \
-    install_demo_easyevse; \
     prepare_sigb_network_interface; \
     configure_security; \
+    install_everest_dir; \
 "
 
-ROOTFS_POSTPROCESS_COMMAND:append:mx93-nxp-bsp = " \
+ROOTFS_POSTPROCESS_COMMAND:append = " \
     ${@bb.utils.contains('DISTRO_FEATURES', 'LVDS_DISPLAY_SUPPORT', 'calibrate_lvds;', '', d)} \
 "
-
-# TBD: do we need the install_demo* commands?
-install_demo_easyevse() {
-	printf "\n\n[output]\nname=DSI-1\nmode=1920x1080@60\ntransform=rotate-270" >> ${IMAGE_ROOTFS}${sysconfdir}/xdg/weston/weston.ini
-}
 
 install_demo() {
     if ! grep -q "HOME=/home/root/" ${IMAGE_ROOTFS}${sysconfdir}/default/weston
