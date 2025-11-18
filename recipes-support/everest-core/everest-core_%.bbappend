@@ -24,6 +24,10 @@ SRCREV_sigboardnxp = "${AUTOREV}"
 
 addtask do_prepare_nxp_additions after do_patch before do_configure
 
+EXTRA_OECMAKE:append = " \
+    -DISO15118_2_GENERATE_AND_INSTALL_CERTIFICATES=OFF \
+"
+
 do_prepare_nxp_additions() {
     mkdir -p ${S}/scripts
     cp -r ${FILE_DIRNAME}/everest-core/everest.service ${WORKDIR}
