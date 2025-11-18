@@ -20,6 +20,7 @@ IMAGE_INSTALL += " \
         sqlite3 \
         everest-core \
         everest-admin-panel \
+        everest-dev-keys \
         stm32flash \
         libocpp \
         mosquitto \
