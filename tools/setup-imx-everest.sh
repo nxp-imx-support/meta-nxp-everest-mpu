@@ -66,6 +66,7 @@ LAYER_LIST=" \
 EXTRA_LAYER_LIST=" \
     meta-nxp-evse-common-mpu-dev \
     meta-nxp-everest-mpu-dev \
+    meta-nxp-gui-guider \
 "
 
 # Get command line options
