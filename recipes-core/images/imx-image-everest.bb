@@ -119,6 +119,13 @@ prepare_sigb_network_interface() {
 }
 
 configure_security() {
+    # Set port name through EX_SSS_BOOT_SSS_PORT for SE05x
+    install -d ${IMAGE_ROOTFS}${sysconfdir}/profile.d
+
+    echo 'export EX_SSS_BOOT_SSS_PORT="/dev/i2c-0:0x48"' > ${IMAGE_ROOTFS}${sysconfdir}/profile.d/se05x.sh
+
+    chmod 755 ${IMAGE_ROOTFS}${sysconfdir}/profile.d/se05x.sh
+
     PKCS11_MODULES_PATH=${IMAGE_ROOTFS}${datadir}/p11-kit/modules
 
     mkdir -p ${PKCS11_MODULES_PATH}
