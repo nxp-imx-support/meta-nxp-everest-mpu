@@ -2,12 +2,13 @@ SUMMARY = "EVerest development PKI (certs, keys, openssl configs, scripts)"
 DESCRIPTION = "Installs EVerest dev PKI material under /etc/everest from a Git repo."
 LICENSE = "CLOSED"
 LIC_FILES_CHKSUM = ""
+AUTHOR = "Marouene Boubakri <marouene.boubakri@nxp.com>"
 
 DEV_KEYS_TAG ?= "everest-mpu-${PV}"
 DEV_KEYS_BRANCH ?= "master"
 SRC_URI = "git://git@bitbucket.sw.nxp.com/micrse/everest-dev-keys.git;branch=${DEV_KEYS_BRANCH};tag=${DEV_KEYS_TAG};protocol=ssh"
 
-SRCREV = "${AUTOREV}"
+SRCREV = "62f57cb186bb9e8fbe09b0d667d656ff727e744a"
 
 S = "${WORKDIR}/git"
 
