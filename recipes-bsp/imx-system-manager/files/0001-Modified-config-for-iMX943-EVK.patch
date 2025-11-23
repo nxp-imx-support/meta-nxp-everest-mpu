@@ -1,0 +1,75 @@
+From 14baa96166ed6d6371103b76c9af99e6d267fac9 Mon Sep 17 00:00:00 2001
+From: OTS <octavian-tiberiu.sirbu@nxp.com>
+Date: Tue, 2 Sep 2025 14:39:00 +0300
+Subject: [PATCH] Modified config for i.MX943 EVK
+
+Added support for both one and two gun charging configurations.
+
+Signed-off-by: OTS <octavian-tiberiu.sirbu@nxp.com>
+Upstream-Status: Pending
+---
+ configs/mx94evk.cfg | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/configs/mx94evk.cfg b/configs/mx94evk.cfg
+index 9d46976..6a16aa5 100755
+--- a/configs/mx94evk.cfg
++++ b/configs/mx94evk.cfg
+@@ -520,7 +520,6 @@ LPTMR1              OWNER
+ LPTMR2              OWNER
+ LPTPM1              OWNER
+ LPTPM4              OWNER
+-LPUART11            OWNER, test
+ MSGINTR1            OWNER
+ MSGINTR2            OWNER
+ MSGINTR3            OWNER
+@@ -554,8 +553,6 @@ XBAR_DSC3           OWNER
+ 
+ # Pins
+ 
+-PIN_GPIO_IO24       OWNER
+-PIN_GPIO_IO25       OWNER
+ 
+ # Memory
+ 
+@@ -639,7 +636,6 @@ IRQSTEER_M7_1       OWNER
+ LPIT3               OWNER
+ LPTPM2              OWNER
+ LPTPM3              OWNER
+-LPUART12            OWNER, test
+ MSGINTR5            OWNER
+ MSGINTR6            OWNER
+ MSGINTR7            OWNER
+@@ -659,9 +655,6 @@ XSPI_RESPONDR       OWNER
+ 
+ # Pins
+ 
+-PIN_GPIO_IO26        OWNER
+-PIN_GPIO_IO27        OWNER
+-
+ # Memory
+ 
+ M7MIX1              DATA, begin=0x020280000, end=0x02037FFFF
+@@ -1024,6 +1017,8 @@ LPUART6             OWNER
+ LPUART7             OWNER
+ LPUART9             OWNER
+ LPUART10            OWNER
++LPUART11            OWNER
++LPUART12            OWNER
+ LVDS                OWNER
+ MU2_A               OWNER
+ MU3_A               OWNER
+@@ -1221,6 +1216,10 @@ PIN_GPIO_IO20        OWNER
+ PIN_GPIO_IO21        OWNER
+ PIN_GPIO_IO22        OWNER
+ PIN_GPIO_IO23        OWNER
++PIN_GPIO_IO24        OWNER
++PIN_GPIO_IO25        OWNER
++PIN_GPIO_IO26        OWNER
++PIN_GPIO_IO27        OWNER
+ PIN_GPIO_IO28        OWNER
+ PIN_GPIO_IO29        OWNER
+ PIN_GPIO_IO30        OWNER
+-- 
+2.34.1
+
