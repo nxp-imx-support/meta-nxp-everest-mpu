@@ -1,0 +1,33 @@
+From 0437a37f8c38f2afecc795d176341157b4a5cdba Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Sun, 23 Nov 2025 21:23:17 +0100
+Subject: [PATCH] CMakeLists.txt: Disable SE05X RNG usage due to known issues
+
+Enabled the `SSS_PROV_DISABLE_SE05X_RNG` definition in CMake
+configuration to prevent using SE05X for random number generation.
+This change addresses stability problems and known issues with
+SE05X RNG.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c8fc09e..c2aa079 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -38,7 +38,7 @@ TARGET_INCLUDE_DIRECTORIES(
+ 	${SIMW_INC_DIR}
+ )
+ 
+-#ADD_DEFINITIONS(-DSSS_PROV_DISABLE_SE05X_RNG)
++ADD_DEFINITIONS(-DSSS_PROV_DISABLE_SE05X_RNG)
+ #ADD_DEFINITIONS(-DSSS_PROV_GENERATE_RSA_PLAIN)
+ 
+ ADD_CUSTOM_COMMAND(
+-- 
+2.34.1
+
