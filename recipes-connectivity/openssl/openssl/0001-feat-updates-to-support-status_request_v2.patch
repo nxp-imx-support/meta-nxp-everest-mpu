@@ -13,8 +13,8 @@ Upstream-Status: Pending
  ssl/s3_lib.c                 | 8 ++++++++
  ssl/statem/extensions_clnt.c | 3 ++-
  ssl/statem/extensions_srvr.c | 4 ++++
- ssl/statem/statem_clnt.c     | 2 +-
- 6 files changed, 24 insertions(+), 2 deletions(-)
+ ssl/statem/statem_clnt.c     | 3 ++-
+ 6 files changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/include/openssl/ssl.h.in b/include/openssl/ssl.h.in
 index 9f91039..f9f42a5 100644
@@ -120,6 +120,14 @@ diff --git a/ssl/statem/statem_clnt.c b/ssl/statem/statem_clnt.c
 index cbf5a57..5d8f509 100644
 --- a/ssl/statem/statem_clnt.c
 +++ b/ssl/statem/statem_clnt.c
+@@ -9,6 +9,7 @@
+  * https://www.openssl.org/source/license.html
+  */
+ 
++#include <openssl/tls1.h>
+ #include <stdio.h>
+ #include <time.h>
+ #include <assert.h>
 @@ -2868,7 +2868,7 @@ int tls_process_cert_status_body(SSL_CONNECTION *s, PACKET *pkt)
      unsigned int type;
  
