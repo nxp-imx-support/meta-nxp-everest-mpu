@@ -17,6 +17,17 @@ IMAGE_INSTALL += " \
         python3-iso15118 \
         python3-sqlite3 \
         python3-wheel \
+        python3-pytest \
+        python3-pytest-asyncio \
+        python3-rpds-py \
+        python3-referencing \
+        python3-attrs \
+        python3-jsonschema \
+        python3-jsonschema-specifications \
+        python3-paho-mqtt \
+        python3-websockets \
+        python3-pyopenssl \
+        python3-pyyaml \
         sqlite3 \
         everest-core \
         everest-admin-panel \
