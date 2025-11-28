@@ -7,6 +7,8 @@ require ../../../meta-imx/meta-imx-sdk/dynamic-layers/qt6-layer/recipes-fsl/imag
 # EVerest related packages
 IMAGE_INSTALL += " \
         python3-pip \
+        python3-terminal \
+        python3-ptyprocess \
         python3-ply \
         python3-cffi \
         python3-asyncio-glib \
