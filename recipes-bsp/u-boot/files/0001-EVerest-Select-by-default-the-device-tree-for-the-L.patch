@@ -1,0 +1,28 @@
+From 1649129c835fa608dd1f8972586f8a32fd298ad7 Mon Sep 17 00:00:00 2001
+From: Ionut Vicovan <Ionut.Vicovan@nxp.com>
+Date: Fri, 28 Nov 2025 09:04:22 +0100
+Subject: [PATCH] [EVerest] Select by default the EVSE device tree for the LVDS
+ display
+
+Upstream-Status: Pending
+Signed-off-by: Ionut Vicovan <Ionut.Vicovan@nxp.com>
+---
+ configs/imx93_11x11_evk_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configs/imx93_11x11_evk_defconfig b/configs/imx93_11x11_evk_defconfig
+index ad2ac9d744a..ea0ae238c6c 100644
+--- a/configs/imx93_11x11_evk_defconfig
++++ b/configs/imx93_11x11_evk_defconfig
+@@ -33,7 +33,7 @@ CONFIG_FIT=y
+ CONFIG_FIT_SIGNATURE=y
+ CONFIG_OF_SYSTEM_SETUP=y
+ CONFIG_BOOTCOMMAND="run sr_ir_v2_cmd;bootflow scan -lb; run bsp_bootcmd"
+-CONFIG_DEFAULT_FDT_FILE="imx93-11x11-evk.dtb"
++CONFIG_DEFAULT_FDT_FILE="imx93-11x11-evk-evse-lvds.dtb"
+ CONFIG_SYS_CBSIZE=2048
+ CONFIG_SYS_PBSIZE=2074
+ CONFIG_ARCH_MISC_INIT=y
+-- 
+2.34.1
+
