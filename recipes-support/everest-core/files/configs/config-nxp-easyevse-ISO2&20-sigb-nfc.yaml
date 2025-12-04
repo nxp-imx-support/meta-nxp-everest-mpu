@@ -1,16 +1,5 @@
 active_modules:
   EvseManager0:
-    module: EvseManager
-    connections:
-      bsp:
-        - module_id: SigboardNXP0
-          implementation_id: board_support
-      slac:
-        - module_id: EvseSlac0
-          implementation_id: main
-      hlc:
-        - module_id: IsoMux0
-          implementation_id: charger
     config_module:
       ac_enforce_hlc: true
       ac_hlc_enabled: true
@@ -21,15 +10,17 @@ active_modules:
       cable_check_enable_imd_self_test: false
       cable_check_wait_below_60V_before_finish: true
       cable_check_wait_number_of_imd_measurements: 1
+      central_contract_validation_allowed: false
       charge_mode: AC
       connector_id: 1
       connector_type: Unknown
+      contract_certificate_installation_enabled: true
       dbg_hlc_auth_after_tstep: false
       dc_isolation_voltage_V: 0
       disable_authentication: true
       enable_autocharge: false
       ev_receipt_required: false
-      evse_id: DE*PNX*E1234567*1
+      evse_id: RO*NXP*E1234567*1
       evse_id_din: 49A80737A45678
       external_ready_to_start_charging: false
       fail_on_powermeter_errors: true
@@ -43,18 +34,22 @@ active_modules:
       hack_sleep_in_cable_check_volkswagen: 0
       has_ventilation: false
       initial_meter_value_timeout_ms: 5000
+      inoperative_error_use_vendor_id: false
       lock_connector_in_state_b: true
       logfile_suffix: session_uuid
       max_current_export_A: 32
       max_current_import_A: 32
-      payment_enable_contract: false
-      payment_enable_eim: false
+      payment_enable_contract: true
+      payment_enable_eim: true
+      raise_mrec9: false
       request_zero_power_in_idle: false
       sae_j2847_2_bpt_enabled: false
       sae_j2847_2_bpt_mode: V2G
+      session_id_type: UUID
       session_logging: true
       session_logging_path: /tmp/everest
       session_logging_xml: true
+      sleep_before_enabling_pwm_hlc_mode_ms: 500
       soft_over_current_measurement_noise_A: 0.5
       soft_over_current_timeout_ms: 7000
       soft_over_current_tolerance_percent: 10
@@ -64,9 +59,26 @@ active_modules:
       uk_smartcharging_random_delay_at_any_change: false
       uk_smartcharging_random_delay_enable: false
       uk_smartcharging_random_delay_max_duration: 600
+      zero_power_allow_ev_to_ignore_pause: false
+      zero_power_ignore_pause: false
+    connections:
+      ac_rcd:
+        - implementation_id: rcd
+          module_id: SigboardNXP0
+      bsp:
+        - implementation_id: board_support
+          module_id: SigboardNXP0
+      hlc:
+        - implementation_id: charger
+          module_id: IsoMux0
+      powermeter_car_side:
+        - implementation_id: powermeter
+          module_id: SigboardNXP0
+      slac:
+        - implementation_id: main
+          module_id: EvseSlac0
+    module: EvseManager
   EvseSecurity0:
-    module: EvseSecurity
-    connections: {}
     config_module:
       csms_ca_bundle: ca/csms/CSMS_ROOT_CA.pem
       csms_leaf_cert_directory: client/csms
@@ -77,9 +89,9 @@ active_modules:
       secc_leaf_cert_directory: client/cso
       secc_leaf_key_directory: client/cso
       v2g_ca_bundle: ca/v2g/V2G_ROOT_CA.pem
-  EvseSlac0:
-    module: EvseSlac
     connections: {}
+    module: EvseSecurity
+  EvseSlac0:
     config_implementation:
       main:
         ac_mode_five_percent: true
@@ -94,14 +106,10 @@ active_modules:
         number_of_sounds: 10
         publish_mac_on_first_parm_req: false
         publish_mac_on_match_cnf: true
+        reset_instead_of_fail: true
         set_key_timeout_ms: 500
         sounding_attenuation_adjustment: 0
   EvseV2G0:
-    module: EvseV2G
-    connections:
-      security:
-        - module_id: EvseSecurity0
-          implementation_id: main
     config_module:
       auth_timeout_eim: 300
       auth_timeout_pnc: 55
@@ -115,38 +123,40 @@ active_modules:
       tls_security: prohibit
       tls_timeout: 15000
       verify_contract_cert_chain: false
+    connections:
+      security:
+        - implementation_id: main
+          module_id: EvseSecurity0
+    module: EvseV2G
   SigboardNXP0:
-    module: SigboardNXP
-    connections: {}
     config_module:
       baud_rate: 115200
+      meter_present: true
       caps_max_current_A: 32
       caps_min_current_A: 0
+      debug: false
       serial_port: /dev/ttyLP2
+    connections: {}
+    module: SigboardNXP
   auth:
-    module: Auth
-    connections:
-      evse_manager:
-        - module_id: EvseManager0
-          implementation_id: evse
-      token_validator:
-        - module_id: token_validator
-          implementation_id: main
-      token_provider:
-        - module_id: PN7160TokenProvider0
-          implementation_id: main
     config_module:
       connection_timeout: 60
       ignore_connector_faults: false
       master_pass_group_id: ''
       prioritize_authorization_over_stopping_transaction: true
       selection_algorithm: PlugEvents
-  energy_manager:
-    module: EnergyManager
     connections:
-      energy_trunk:
-        - module_id: grid_connection_point
-          implementation_id: energy_grid
+      evse_manager:
+        - implementation_id: evse
+          module_id: EvseManager0
+      token_provider:
+        - implementation_id: main
+          module_id: token_provider_1
+      token_validator:
+        - implementation_id: main
+          module_id: token_validator
+    module: Auth
+  energy_manager:
     config_module:
       debug: false
       nominal_ac_voltage: 230
@@ -160,60 +170,47 @@ active_modules:
       switch_3ph1ph_time_hysteresis_s: 600
       switch_3ph1ph_while_charging_mode: Never
       update_interval: 1
-  grid_connection_point:
-    module: EnergyNode
     connections:
-      energy_consumer:
-        - module_id: EvseManager0
-          implementation_id: energy_grid
+      energy_trunk:
+        - implementation_id: energy_grid
+          module_id: grid_connection_point
+    module: EnergyManager
+  grid_connection_point:
     config_module:
       fuse_limit_A: 32
       phase_count: 1
+    connections:
+      energy_consumer:
+        - implementation_id: energy_grid
+          module_id: EvseManager0
+    module: EnergyNode
   token_validator:
-    module: DummyTokenValidator
-    connections: {}
     config_implementation:
       main:
         sleep: 0.25
         validation_reason: Token seems valid
         validation_result: Accepted
-  PN7160TokenProvider0:
-    module: PN7160TokenProvider
     connections: {}
-    config_implementation:
-      main:
-        debug: false
-        disable_nfc_rfid: false
-        token_debounce_interval_ms: 3000
+    module: DummyTokenValidator
   Evse15118D200:
+    config_module:
+      device: eth0
+      enable_sdp_server: true
+      enable_ssl_logging: false
+      enable_tls_key_logging: false
+      enforce_tls_1_3: false
+      logging_path: .
+      supported_dynamic_mode: true
+      supported_mobility_needs_mode_provided_by_secc: false
+      supported_scheduled_mode: false
+      tls_key_logging_path: /tmp
+      tls_negotiation_strategy: ACCEPT_CLIENT_OFFER
     module: Evse15118D20
     connections:
       security:
         - module_id: EvseSecurity0
           implementation_id: main
-    config_module:
-      certificate_path: ''
-      device: eth0
-      enable_sdp_server: true
-      enable_ssl_logging: false
-      enable_tls_key_logging: false
-      logging_path: .
-      supported_dynamic_mode: true
-      supported_mobility_needs_mode_provided_by_secc: false
-      supported_scheduled_mode: false
-      tls_negotiation_strategy: ACCEPT_CLIENT_OFFER
   IsoMux0:
-    module: IsoMux
-    connections:
-      iso20:
-        - module_id: Evse15118D200
-          implementation_id: charger
-      iso2:
-        - module_id: EvseV2G0
-          implementation_id: charger
-      security:
-        - module_id: EvseSecurity0
-          implementation_id: main
     config_module:
       device: eth0
       proxy_port_iso2: 61341
@@ -221,232 +218,20 @@ active_modules:
       tls_key_logging: false
       tls_security: prohibit
       tls_timeout: 15000
-x-module-layout:
-  EvseManager0:
-    position:
-      x: 16
-      'y': 38
-    terminals:
-      bottom: []
-      left:
-        - id: ac_rcd
-          interface: ac_rcd
-          type: requirement
-        - id: bsp
-          interface: evse_board_support
-          type: requirement
-        - id: connector_lock
-          interface: connector_lock
-          type: requirement
-        - id: hlc
-          interface: ISO15118_charger
-          type: requirement
-        - id: imd
-          interface: isolation_monitor
-          type: requirement
-        - id: powermeter_car_side
-          interface: powermeter
-          type: requirement
-        - id: powermeter_grid_side
-          interface: powermeter
-          type: requirement
-        - id: powersupply_DC
-          interface: power_supply_DC
-          type: requirement
-        - id: slac
-          interface: slac
-          type: requirement
-      right:
-        - id: energy_grid
-          interface: energy
-          type: provide
-        - id: evse
-          interface: evse_manager
-          type: provide
-        - id: random_delay
-          interface: uk_random_delay
-          type: provide
-        - id: token_provider
-          interface: auth_token_provider
-          type: provide
-      top: []
-  EvseSecurity0:
-    position:
-      x: -38
-      'y': 40
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: evse_security
-          type: provide
-      top: []
-  EvseSlac0:
-    position:
-      x: -1
-      'y': 51
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: slac
-          type: provide
-      top: []
-  EvseV2G0:
-    position:
-      x: -20
-      'y': 24
-    terminals:
-      bottom: []
-      left:
-        - id: security
-          interface: evse_security
-          type: requirement
-      right:
-        - id: charger
-          interface: ISO15118_charger
-          type: provide
-      top: []
-  SigboardNXP0:
-    position:
-      x: 0
-      'y': 24
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: board_support
-          interface: evse_board_support
-          type: provide
-        - id: powermeter
-          interface: powermeter
-          type: provide
-        - id: rcd
-          interface: ac_rcd
-          type: provide
-      top: []
-  auth:
-    position:
-      x: 38
-      'y': 33
-    terminals:
-      bottom: []
-      left:
-        - id: evse_manager
-          interface: evse_manager
-          type: requirement
-        - id: token_provider
-          interface: auth_token_provider
-          type: requirement
-        - id: token_validator
-          interface: auth_token_validator
-          type: requirement
-      right:
-        - id: main
-          interface: auth
-          type: provide
-        - id: reservation
-          interface: reservation
-          type: provide
-      top: []
-  energy_manager:
-    position:
-      x: 45
-      'y': 15
-    terminals:
-      bottom: []
-      left:
-        - id: energy_trunk
-          interface: energy
-          type: requirement
-      right:
-        - id: main
-          interface: energy_manager
-          type: provide
-      top: []
-  grid_connection_point:
-    position:
-      x: 32
-      'y': 24
-    terminals:
-      bottom: []
-      left:
-        - id: energy_consumer
-          interface: energy
-          type: requirement
-        - id: powermeter
-          interface: powermeter
-          type: requirement
-        - id: price_information
-          interface: energy_price_information
-          type: requirement
-      right:
-        - id: energy_grid
-          interface: energy
-          type: provide
-        - id: external_limits
-          interface: external_energy_limits
-          type: provide
-      top: []
-  token_validator:
-    position:
-      x: 20
-      'y': 52
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: auth_token_validator
-          type: provide
-      top: []
-  PN7160TokenProvider0:
-    position:
-      x: 17
-      'y': 45
-    terminals:
-      top: []
-      right:
-        - id: main
-          interface: auth_token_provider
-          type: provide
-      bottom: []
-      left: []
-  Evse15118D200:
-    position:
-      x: -21
-      'y': 34
-    terminals:
-      top: []
-      right:
-        - id: charger
-          interface: ISO15118_charger
-          type: provide
-      bottom: []
-      left:
-        - id: security
-          interface: evse_security
-          type: requirement
-  IsoMux0:
-    position:
-      x: -4
-      'y': 42
-    terminals:
-      top: []
-      right:
-        - id: charger
-          interface: ISO15118_charger
-          type: provide
-      bottom: []
-      left:
-        - id: iso2
-          interface: ISO15118_charger
-          type: requirement
-        - id: iso20
-          interface: ISO15118_charger
-          type: requirement
-        - id: security
-          interface: evse_security
-          type: requirement
+    module: IsoMux
+    connections:
+      ext2:
+        - module_id: EvseV2G0
+          implementation_id: extensions
+      ext20:
+        - module_id: Evse15118D200
+          implementation_id: extensions
+      iso2:
+        - module_id: EvseV2G0
+          implementation_id: charger
+      iso20:
+        - module_id: Evse15118D200
+          implementation_id: charger
+      security:
+        - module_id: EvseSecurity0
+          implementation_id: main

@@ -8,17 +8,22 @@ active_modules:
       ac_with_soc: false
       autocharge_use_slac_instead_of_hlc: false
       cable_check_enable_imd_self_test: false
+      cable_check_wait_below_60V_before_finish: true
       cable_check_wait_number_of_imd_measurements: 1
+      central_contract_validation_allowed: false
       charge_mode: AC
       connector_id: 1
+      connector_type: Unknown
+      contract_certificate_installation_enabled: true
       dbg_hlc_auth_after_tstep: false
       dc_isolation_voltage_V: 0
       disable_authentication: true
       enable_autocharge: false
       ev_receipt_required: false
-      evse_id: DE*PNX*E1234567*1
+      evse_id: RO*NXP*E1234567*1
       evse_id_din: 49A80737A45678
       external_ready_to_start_charging: false
+      fail_on_powermeter_errors: true
       hack_allow_bpt_with_iso2: false
       hack_fix_hlc_integer_current_requests: false
       hack_pause_imd_during_precharge: false
@@ -29,18 +34,22 @@ active_modules:
       hack_sleep_in_cable_check_volkswagen: 0
       has_ventilation: false
       initial_meter_value_timeout_ms: 5000
+      inoperative_error_use_vendor_id: false
       lock_connector_in_state_b: true
       logfile_suffix: session_uuid
       max_current_export_A: 32
       max_current_import_A: 32
-      payment_enable_contract: false
-      payment_enable_eim: false
+      payment_enable_contract: true
+      payment_enable_eim: true
+      raise_mrec9: false
       request_zero_power_in_idle: false
       sae_j2847_2_bpt_enabled: false
       sae_j2847_2_bpt_mode: V2G
+      session_id_type: UUID
       session_logging: true
       session_logging_path: /tmp/everest
       session_logging_xml: true
+      sleep_before_enabling_pwm_hlc_mode_ms: 500
       soft_over_current_measurement_noise_A: 0.5
       soft_over_current_timeout_ms: 7000
       soft_over_current_tolerance_percent: 10
@@ -50,13 +59,21 @@ active_modules:
       uk_smartcharging_random_delay_at_any_change: false
       uk_smartcharging_random_delay_enable: false
       uk_smartcharging_random_delay_max_duration: 600
+      zero_power_allow_ev_to_ignore_pause: false
+      zero_power_ignore_pause: false
     connections:
+      ac_rcd:
+        - implementation_id: rcd
+          module_id: SigboardNXP0
       bsp:
         - implementation_id: board_support
           module_id: SigboardNXP0
       hlc:
         - implementation_id: charger
           module_id: EvseV2G0
+      powermeter_car_side:
+        - implementation_id: powermeter
+          module_id: SigboardNXP0
       slac:
         - implementation_id: main
           module_id: EvseSlac0
@@ -89,6 +106,7 @@ active_modules:
         number_of_sounds: 10
         publish_mac_on_first_parm_req: false
         publish_mac_on_match_cnf: true
+        reset_instead_of_fail: true
         set_key_timeout_ms: 500
         sounding_attenuation_adjustment: 0
     connections: {}
@@ -98,6 +116,7 @@ active_modules:
       auth_timeout_eim: 300
       auth_timeout_pnc: 55
       device: eth0
+      enable_sdp_server: true
       supported_DIN70121: false
       supported_ISO15118_2: true
       terminate_connection_on_failed_response: false
@@ -117,6 +136,7 @@ active_modules:
       meter_present: true
       caps_max_current_A: 32
       caps_min_current_A: 0
+      debug: false
       serial_port: /dev/ttyLP2
     connections: {}
     module: SigboardNXP
@@ -186,199 +206,3 @@ active_modules:
         validation_result: Accepted
     connections: {}
     module: DummyTokenValidator
-'x-module-layout':
-  EvseManager0:
-    position:
-      x: 16
-      y: 38
-    terminals:
-      bottom: []
-      left:
-        - id: ac_rcd
-          interface: ac_rcd
-          type: requirement
-        - id: bsp
-          interface: evse_board_support
-          type: requirement
-        - id: connector_lock
-          interface: connector_lock
-          type: requirement
-        - id: hlc
-          interface: ISO15118_charger
-          type: requirement
-        - id: imd
-          interface: isolation_monitor
-          type: requirement
-        - id: powermeter_car_side
-          interface: powermeter
-          type: requirement
-        - id: powermeter_grid_side
-          interface: powermeter
-          type: requirement
-        - id: powersupply_DC
-          interface: power_supply_DC
-          type: requirement
-        - id: slac
-          interface: slac
-          type: requirement
-      right:
-        - id: energy_grid
-          interface: energy
-          type: provide
-        - id: evse
-          interface: evse_manager
-          type: provide
-        - id: random_delay
-          interface: uk_random_delay
-          type: provide
-        - id: token_provider
-          interface: auth_token_provider
-          type: provide
-      top: []
-  EvseSecurity0:
-    position:
-      x: -22
-      y: 21
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: evse_security
-          type: provide
-      top: []
-  EvseSlac0:
-    position:
-      x: -6
-      y: 44
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: slac
-          type: provide
-      top: []
-  EvseV2G0:
-    position:
-      x: -8
-      y: 35
-    terminals:
-      bottom: []
-      left:
-        - id: security
-          interface: evse_security
-          type: requirement
-      right:
-        - id: charger
-          interface: ISO15118_charger
-          type: provide
-      top: []
-  SigboardNXP0:
-    position:
-      x: 1
-      y: 28
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: board_support
-          interface: evse_board_support
-          type: provide
-        - id: powermeter
-          interface: powermeter
-          type: provide
-        - id: rcd
-          interface: ac_rcd
-          type: provide
-      top: []
-  auth:
-    position:
-      x: 55
-      y: 36
-    terminals:
-      bottom: []
-      left:
-        - id: evse_manager
-          interface: evse_manager
-          type: requirement
-        - id: token_provider
-          interface: auth_token_provider
-          type: requirement
-        - id: token_validator
-          interface: auth_token_validator
-          type: requirement
-      right:
-        - id: main
-          interface: auth
-          type: provide
-        - id: reservation
-          interface: reservation
-          type: provide
-      top: []
-  energy_manager:
-    position:
-      x: 54
-      y: 20
-    terminals:
-      bottom: []
-      left:
-        - id: energy_trunk
-          interface: energy
-          type: requirement
-      right:
-        - id: main
-          interface: energy_manager
-          type: provide
-      top: []
-  grid_connection_point:
-    position:
-      x: 39
-      y: 27
-    terminals:
-      bottom: []
-      left:
-        - id: energy_consumer
-          interface: energy
-          type: requirement
-        - id: powermeter
-          interface: powermeter
-          type: requirement
-        - id: price_information
-          interface: energy_price_information
-          type: requirement
-      right:
-        - id: energy_grid
-          interface: energy
-          type: provide
-        - id: external_limits
-          interface: external_energy_limits
-          type: provide
-      top: []
-  token_provider_1:
-    position:
-      x: 32
-      y: 43
-    terminals:
-      bottom: []
-      left:
-        - id: evse
-          interface: evse_manager
-          type: requirement
-      right:
-        - id: main
-          interface: auth_token_provider
-          type: provide
-      top: []
-  token_validator:
-    position:
-      x: 34
-      y: 52
-    terminals:
-      bottom: []
-      left: []
-      right:
-        - id: main
-          interface: auth_token_validator
-          type: provide
-      top: []
