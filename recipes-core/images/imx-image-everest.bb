@@ -57,6 +57,7 @@ IMAGE_INSTALL += " \
         lms-eth2spi \
         python3-spsdk \
         gui-guider \
+        jq \
         "
 
 INSANE_SKIP:everest-framework += "already-stripped"
