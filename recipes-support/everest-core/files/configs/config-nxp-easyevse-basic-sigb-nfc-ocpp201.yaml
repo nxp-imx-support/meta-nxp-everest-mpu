@@ -1,0 +1,275 @@
+active_modules:
+################################################################
+  iso15118_charger:
+    module: EvseV2G
+    config_module:
+      device: auto
+      tls_security: allow
+    connections:
+      security:
+        - module_id: evse_security
+          implementation_id: main
+  iso15118_car:
+    module: PyEvJosev
+    config_module:
+      device: auto
+      supported_ISO15118_2: true
+################################################################
+  evse_manager_1:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+      evse_id: RO*NXP*E1234567*1
+      evse_id_din: 49A80737A45678
+      session_logging: true
+      session_logging_xml: false
+      session_logging_path: /tmp/everest
+      ac_hlc_enabled: false
+      ac_hlc_use_5percent: false
+      ac_enforce_hlc: false
+      ac_nominal_voltage: 230
+      request_zero_power_in_idle: false
+      external_ready_to_start_charging: false
+      fail_on_powermeter_errors: true
+      ac_with_soc: false
+      autocharge_use_slac_instead_of_hlc: false
+      cable_check_enable_imd_self_test: false
+      cable_check_wait_below_60V_before_finish: true
+      cable_check_wait_number_of_imd_measurements: 1
+      central_contract_validation_allowed: false
+      charge_mode: AC
+      connector_type: Unknown
+      contract_certificate_installation_enabled: true
+      dbg_hlc_auth_after_tstep: false
+      dc_isolation_voltage_V: 0
+      disable_authentication: false
+      enable_autocharge: false
+      ev_receipt_required: false
+      hack_allow_bpt_with_iso2: false
+      hack_fix_hlc_integer_current_requests: false
+      hack_pause_imd_during_precharge: false
+      hack_present_current_offset: 0
+      hack_simplified_mode_limit_10A: false
+      hack_skoda_enyaq: false
+      hack_sleep_in_cable_check: 0
+      hack_sleep_in_cable_check_volkswagen: 0
+      has_ventilation: false
+      initial_meter_value_timeout_ms: 5000
+      inoperative_error_use_vendor_id: false
+      lock_connector_in_state_b: true
+      logfile_suffix: session_uuid
+      max_current_export_A: 32
+      max_current_import_A: 32
+      payment_enable_contract: false
+      payment_enable_eim: false
+      raise_mrec9: false
+      sae_j2847_2_bpt_enabled: false
+      sae_j2847_2_bpt_mode: V2G
+      soft_over_current_measurement_noise_A: 0.5
+      soft_over_current_tolerance_percent: 10
+      switch_3ph1ph_cp_state: X1
+      switch_3ph1ph_delay_s: 10
+      uk_smartcharging_random_delay_at_any_change: false
+      uk_smartcharging_random_delay_enable: false
+      uk_smartcharging_random_delay_max_duration: 600
+    connections:
+      bsp:
+        - module_id: SigboardNXP1
+          implementation_id: board_support
+      powermeter_grid_side:
+        - module_id: yeti_driver_1
+          implementation_id: powermeter
+      slac:
+        - module_id: slac
+          implementation_id: evse
+      hlc:
+        - module_id: iso15118_charger
+          implementation_id: charger
+################################################################
+  yeti_driver_1:
+    module: YetiSimulator
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+################################################################
+  slac:
+    module: SlacSimulator
+
+  SigboardNXP1:
+    config_module:
+      baud_rate: 115200
+      caps_max_current_A: 32
+      caps_min_current_A: 0
+      debug: false
+      serial_port: /dev/ttyLP2
+      meter_present: true
+    connections: {}
+    module: SigboardNXP
+################################################################
+  ocpp:
+    module: OCPP201
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      auth:
+        - module_id: auth
+          implementation_id: main
+      system:
+        - module_id: system
+          implementation_id: main
+      security:
+        - module_id: evse_security
+          implementation_id: main
+      evse_energy_sink:
+        - module_id: grid_connection_point
+          implementation_id: external_limits
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: external_limits
+      reservation:
+        - module_id: auth
+          implementation_id: reservation
+    access:
+      config:
+        allow_global_read: true
+        allow_global_write: false
+        allow_set_read_only: false
+        modules:
+          auth:
+            allow_read: true
+            allow_write: true
+            allow_set_read_only: true
+################################################################
+  persistent_store:
+    module: PersistentStore
+################################################################
+  evse_security:
+    module: EvseSecurity
+    config_module:
+      private_key_password: "123456"
+  token_provider_1:
+    config_implementation:
+      main:
+        debug: false
+        disable_nfc_rfid: false
+        token_debounce_interval_ms: 3000
+    connections: {}
+    module: PN7160TokenProvider
+
+################################################################
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 600
+      ignore_connector_faults: false
+      master_pass_group_id: ''
+      prioritize_authorization_over_stopping_transaction: true
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+        - module_id: token_provider_1
+          implementation_id: main
+        - module_id: ocpp
+          implementation_id: auth_provider
+      token_validator:
+        - module_id: ocpp
+          implementation_id: auth_validator
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      kvs:
+        - module_id: persistent_store
+          implementation_id: main
+##############################################################
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      debug: false
+      nominal_ac_voltage: 230
+      schedule_interval_duration: 60
+      slice_ampere: 1.0
+      slice_watt: 1000
+      schedule_total_duration: 5
+      switch_3ph1ph_max_nr_of_switches_per_session: 0
+      switch_3ph1ph_power_hysteresis_W: 200
+      switch_3ph1ph_switch_limit_stickyness: DontChange
+      switch_3ph1ph_time_hysteresis_s: 600
+      switch_3ph1ph_while_charging_mode: Never
+      update_interval: 1
+    connections:
+      energy_trunk:
+        - module_id: grid_connection_point
+          implementation_id: energy_grid
+################################################################
+  evse_manager_1_ocpp_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1
+          implementation_id: energy_grid
+################################################################
+  evse_manager_1_api_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: energy_grid
+      powermeter:
+        - module_id: yeti_driver_1
+          implementation_id: powermeter
+################################################################
+  grid_connection_point:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 0
+    config_module:
+      fuse_limit_A: 40.0
+      phase_count: 3
+    connections:
+      price_information: []
+      energy_consumer:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: energy_grid
+################################################################
+  api:
+    module: API
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      ocpp:
+        - module_id: ocpp
+          implementation_id: ocpp_generic
+      error_history:
+        - module_id: error_history
+          implementation_id: error_history
+      evse_energy_sink:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: external_limits
+################################################################
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+  system:
+    module: System
+################################################################
