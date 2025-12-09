@@ -17,7 +17,7 @@ active_modules:
       contract_certificate_installation_enabled: true
       dbg_hlc_auth_after_tstep: false
       dc_isolation_voltage_V: 0
-      disable_authentication: true
+      disable_authentication: false
       enable_autocharge: false
       ev_receipt_required: false
       evse_id: RO*NXP*E1234567*1
