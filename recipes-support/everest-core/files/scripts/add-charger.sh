@@ -12,16 +12,6 @@ GRAPHQL_API_URL="http://${SERVER_ID}:8090/v1/graphql"
 
 # Configuration
 CP_PASSWORD="DEADBEEFDEADBEEF"
-ID_TOKEN="DEADBEEF"
-ID_TOKEN_TYPE="ISO14443"
-
-# Function to show usage
-show_usage() {
-    echo "Usage: $0 [--cleanup]"
-    echo "  (no flags)  : Create test location, charging station"
-    echo "  --cleanup   : Delete the test data created by this script"
-    exit 1
-}
 
 # Function to execute GraphQL mutation
 execute_graphql() {
@@ -87,7 +77,7 @@ add_charging_station() {
 }
 
 # Function to update SP1 password (same as original - uses different API)
-add_cp001_password() {
+add_cp_password() {
     local response
     local success=false
     local attempt=1
@@ -95,7 +85,7 @@ add_cp001_password() {
 
     until $success; do
         echo "Attempt $attempt: Updating SP1 password..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" --location --request PUT "http://localhost:8080/data/monitoring/variableAttribute?stationId=${CHARGEPOINT_ID}&setOnCharger=true" \
+        response=$(curl -s -o /dev/null -w "%{http_code}" --location --request PUT "http://${SERVER_ID}:8080/data/monitoring/variableAttribute?stationId=${CHARGEPOINT_ID}&setOnCharger=true" \
             --header "Content-Type: application/json" \
             --data-raw '{
                 "component": {
@@ -126,58 +116,8 @@ add_cp001_password() {
     done
 }
 
-# Function to cleanup test data
-cleanup_test_data() {
-    echo "🧹 Cleaning up ALL CitrineOS test data..."
-    echo "⚠️  WARNING: This will delete ALL locations, charging stations ...!"
-    
-    # Delete ALL VariableAttributes
-    echo "2. Deleting ALL VariableAttributes..." >&2
-    local delete_all_vars="mutation { delete_VariableAttributes(where: {}) { affected_rows } }"
-    local vars_response=$(execute_graphql "$delete_all_vars")
-    echo "  Deleted VariableAttributes: $vars_response" >&2
-    
-    # Delete ALL charging stations
-    echo "3. Deleting ALL Charging Stations..." >&2
-    local delete_all_stations="mutation { delete_ChargingStations(where: {}) { affected_rows } }"
-    local stations_response=$(execute_graphql "$delete_all_stations")
-    echo "  Deleted charging stations: $stations_response" >&2
-    
-    # Delete ALL locations
-    echo "4. Deleting ALL Locations..." >&2
-    local delete_all_locations="mutation { delete_Locations(where: {}) { affected_rows } }"
-    local locations_response=$(execute_graphql "$delete_all_locations")
-    echo "  Deleted locations: $locations_response" >&2
-    
-    echo "✅ Complete cleanup finished!"
-}
-
 # Main script execution
 echo "Starting GraphQL-based setup..."
-
-# Check if this script is being sourced or executed directly
-# When sourced, $0 is the calling script name, not this script
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    # Script is being executed directly, parse command line arguments
-    case "${1:-}" in
-        --cleanup)
-            cleanup_test_data
-            exit 0
-            ;;
-        --help|-h)
-            show_usage
-            ;;
-        "")
-            # No arguments, continue with normal setup
-            ;;
-        *)
-            echo " argument '$1'"
-            #show_usage
-            ;;
-    esac
-fi
-
-# If sourced, skip argument parsing and just run the setup
 
 echo "Adding a new location..."
 LOCATION_ID=$(add_location)
@@ -192,7 +132,7 @@ echo "Location ID: $LOCATION_ID"
 echo "Adding new charging station..."
 add_charging_station "$LOCATION_ID" "$CHARGEPOINT_ID"
 
-echo "Adding cp001 password to citrine..."
-add_cp001_password "$CP_PASSWORD"
+echo "Adding $CHARGEPOINT_ID password to citrine..."
+add_cp_password "$CP_PASSWORD"
 
 echo "CP Setup completed successfully!" 

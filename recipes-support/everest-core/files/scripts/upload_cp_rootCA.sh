@@ -23,7 +23,7 @@ curl --location --request PUT 'http://localhost:8080/data/certificates/rootCerti
   \"stationId\": \"$STATION_ID\",
   \"certificateType\": \"CSMSRootCertificate\",
   \"tenantId\": \"1\",
-  \"fileId\": \"rootCertificate.pem\"
+  \"fileId\": \"CSMS_ROOT_CA.pem\"
 }"
 
 echo "All operations completed."

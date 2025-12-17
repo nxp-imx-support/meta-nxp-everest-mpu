@@ -15,14 +15,6 @@ SERVER_ID="$1"
 # Configuration
 GRAPHQL_API_URL="http://${SERVER_ID}:8090/v1/graphql"
 
-# Function to show usage
-show_usage() {
-    echo "Usage: $0 [--cleanup]"
-    echo "  (no flags)  : Create test location, charging station, and RFID authorization"
-    echo "  --cleanup   : Delete the test data created by this script"
-    exit 1
-}
-
 # Function to execute GraphQL mutation
 execute_graphql() {
     local query="$1"
@@ -97,7 +89,7 @@ add_evdriver_authorization() {
 
     until $success; do
         echo "Attempt $attempt: Adding ev driver authorization..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" --location --request PUT "http://localhost:8080/data/evdriver/authorization?idToken=${idToken}&type=${idTokenType}" \
+        response=$(curl -s -o /dev/null -w "%{http_code}" --location --request PUT "http://${SERVER_ID}:8080/data/evdriver/authorization?idToken=${idToken}&type=${idTokenType}" \
             --header "Content-Type: application/json" \
             --data-raw '{
                "idToken": {
@@ -120,60 +112,14 @@ add_evdriver_authorization() {
     done
 }
 
-# Function to cleanup test data
-cleanup_test_data() {
-    echo "🧹 Cleaning up ALL CitrineOS test data..."
-    echo "⚠️  WARNING: This will delete ALL authorizations!"
-    
-    # Delete ALL authorizations
-    echo "1. Deleting ALL Authorizations..." >&2
-    local delete_all_auth="mutation { delete_Authorizations(where: {}) { affected_rows } }"
-    local auth_response=$(execute_graphql "$delete_all_auth")
-    echo "  Deleted authorizations: $auth_response" >&2
-    
-    # Delete ALL VariableAttributes
-    echo "2. Deleting ALL VariableAttributes..." >&2
-    local delete_all_vars="mutation { delete_VariableAttributes(where: {}) { affected_rows } }"
-    local vars_response=$(execute_graphql "$delete_all_vars")
-    echo "  Deleted VariableAttributes: $vars_response" >&2
-    
-    # Optionally delete ALL IdTokens (commented out by default as they might be needed)
-    echo "5. Deleting ALL RFID Tokens..." >&2
-    local delete_all_tokens="mutation { delete_IdTokens(where: {}) { affected_rows } }"
-    local tokens_response=$(execute_graphql "$delete_all_tokens")
-    echo "  Deleted RFID tokens: $tokens_response" >&2
-    
-    echo "✅ Complete cleanup finished!"
-    echo "Note: RFID tokens were preserved. To delete them too, uncomment the relevant section in the script."
-}
 
+##########################################
 # Main script execution
+
+
 echo "Starting GraphQL-based setup..."
 
-# Check if this script is being sourced or executed directly
-# When sourced, $0 is the calling script name, not this script
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    # Script is being executed directly, parse command line arguments
-    case "${1:-}" in
-        --cleanup)
-            cleanup_test_data
-            exit 0
-            ;;
-        --help|-h)
-            show_usage
-            ;;
-        "")
-            # No arguments, continue with normal setup
-            ;;
-        *)
-            echo " argument '$1'"
-            #show_usage
-            ;;
-    esac
-fi
-
 # If sourced, skip argument parsing and just run the setup
-
 echo "Adding RFID token..."
 TOKEN_ID=$(add_rfid_token "$ID_TOKEN" "$ID_TOKEN_TYPE")
 
