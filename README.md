@@ -1,132 +1,102 @@
-i.MX EasyEVSE MPU Meta Layer
-============================
+i.MX EasyEVSE EVerest MPU Meta Layer
+====================================
 
-This repository holds the needed additional configuration to prepare the
-i.MX Linux BSP and build the i.MX EasyEVSE Linux demo.
+This repository holds the needed additional configuration to prepare and build the i.MX Linux BSP for the EVSE part of the EasyEVSE on EVerest demo.
+
+The NXP EasyEVSE EV Charging Station Development Platform on EVerest, rev. 1.0, is an Early Access Release.
+It is a combined solution, using i.MX93 running Linux for the EVSE, and i.MXRT106x running FreeRTOS for the EV.
 
 
-Yocto Image
------------
+Yocto Image for the EVSE
+------------------------
 
 The following instructions are abbreviated. Please consult the
-[i.MX Linux Yocto Project User's Guide](https://www.nxp.com/docs/en/user-guide/IMX_YOCTO_PROJECT_USERS_GUIDE.pdf) for specific details.
+[i.MX Linux Yocto Project User's Guide](https://www.nxp.com/docs/en/user-guide/UG10164.pdf) for specific details.
 
 * Default Build
 
     ```sh
-    repo init -u https://github.com/nxp-imx-support/nxp-easyevse-mpu-manifest.git -b release/easyevse-mpu-2.0 -m imx-6.1.55-2.2.0_evse.xml
+    repo init -u https://github.com/nxp-imx-support/nxp-easyevse-mpu-manifest -b release/everest-mpu-1.0 -m imx-6.12.20-2.0.0_everest.xml
     repo sync
     ```
 
 * Download the Plug & Trust Middleware (04.05.00)
+
     * Login to NXP.com and download the
       [EdgeLock SE05x Plug & Trust Middleware 04.05.00](https://www.nxp.com/webapp/sps/download/license.jsp?colCode=SE05x-PLUG-TRUST-MW-v04-05-00&appType=file1&DOWNLOAD_ID=null)
+
     * Copy the downloaded `se05x_mw_v04.05.00.zip` file to the directory
       where you ran `repo sync` above.
 
-* Build the Image
+* Download the Lumissil CG5317 Firmware and Tools package (04.05.000)
+
+    * Login to NXP.com and download the
+      [Lumissil CG5317 Firmware and Tools 4.05.000](https://www.nxp.com/webapp/sps/download/license.jsp?colCode=CG5317_4_05_000_tgz&appType=file1&DOWNLOAD_ID=null)
+
+    * Copy the downloaded `CG5317_4.05.000.tgz` file to the directory
+      where you ran `repo sync` above.
+
+* Build the EVSE Image
 
     ```sh
-    DISTRO=fsl-imx-wayland MACHINE=imx93evk-easyevse . imx-setup-easyevse.sh -b imx93 -r humble
-    bitbake imx-image-easyevse
+    DISTRO=fsl-imx-wayland MACHINE=imx93evk-easyevse . imx-setup-everest.sh -b imx93
+    bitbake imx-image-everest
     ```
 
-_Note:_ The image is configured by default for use with the LVDS display (DY1212W-4856).
+_Note:_ The image is configured for use with the LVDS display (DY1212W-4856).
 
 
-* _Optional:_ To use the older MIPI-DSI display (MX8-DSI-OLED1A), disable LVDS display
-  support before the final build step from above.
+* Install the EVSE image to the eMMC or SDCard of the i.MX93 board
 
-    ```sh
-    echo 'DISTRO_FEATURES:remove = "LVDS_DISPLAY_SUPPORT"' >> conf/local.conf
-    bitbake imx-image-easyevse
-    ```
-
-* _Optional:_ Disable SE050 authentication in the ISO 15118 stack before
-  the final build step from above.
-
-    ```sh
-    echo 'FEATPROD_PKCS11_SUPPORTED ?= "OFF"' >> conf/local.conf
-    bitbake imx-image-easyevse
-    ```
-
-* Install the image to eMMC or SDCard
-
-    The same image shall be flashed to both the EVSE and EV boards.
-
-    Consult the [i.MX Linux User's Guide](https://www.nxp.com/docs/en/user-guide/IMX_LINUX_USERS_GUIDE.pdf) for details connecting to and
-    flashing the system image on the boards.
+    Consult the [i.MX Linux User's Guide](https://www.nxp.com/docs/en/user-guide/UG10163.pdf) for details on connecting to and flashing the system image on the board.
 
     * Configure the board to boot in "Download mode"
 
-    * Flash the imx-image-easyevse WIC image compiled above. E.g., using
+    * Flash the imx-image-everest WIC image compiled above. E.g., using
       [UUU](https://github.com/nxp-imx/mfgtools):
 
         ```sh
         cd tmp/deploy/images/imx93evk-easyevse
-        uuu -b emmc_all imx-boot imx-image-easyevse-imx93evk-easyevse.wic.zst
+        uuu -b emmc_all imx-boot imx-image-everest-imx93evk-easyevse.rootfs.wic.zst
         ```
 
     * Boot the image on eMMC or SDCard
 
 
-Provisioning the SE050
-----------------------
+MCU application for the EV
+--------------------------
 
-Provisioning the SE050 is only necessary once.
+Login to NXP.com and download the [EasyEVSE EV MCU Application](https://www.nxp.com/webapp/Download?colCode=EasyEVSE_EVerest_EV_RT106x_SEVENSTAX&appType=license).
 
-* Make sure the SE050 is plugged and working
+Consult the [NXP EasyEVSE EV Charging Station Development Platform for MCU User Guide](https://www.nxp.com/webapp/Download?colCode=CCEVCPGSUG) for details on connecting to and installing the downloaded application (EasyEVSE_EVerest_EV_RT106x_SEVENSTAX.zip) on the i.MXRT 106x board.
 
-    ```sh
-    OPENSSL_CONF=/etc/ssl/openssl11_sss_se050.cnf nxp_iot_agent_demo
-    se05x_GetInfo
-    ```
 
-* Run provision script
+Using the SE050
+---------------
 
-    ```sh
-    cd ~/res/se05x/
-    ./provision.sh
-    ```
+The Secure Element SE050 is used for secure storage and usage of certificates for TLS authentication during ISO15118 charging sessions.
+Current version of EasyEVSE on EVerest supports ISO 15118-2 EIM (External Identification Means) Charging with TLS 1.2.
+The product provides a set of development keys and certificates which are used for demonstrating this functionality.
+They are installed on the Linux image at build time for the EVSE, as well as in the EV FreeRTOS application, and are used
+during TLS authentication process.
 
-### Clearing the SE050
+For the ISO15118-2 EIM with TLS demo, the EVSE certificates need to be copied in the SE050 once, before they are used the first time.
+This can be done running the command:
 
-In certain cases, the SE050 memory may need to be purged and then
-re-provisioned.
+```sh
+cd /etc/everest
+./gen_pki.sh -s
+```
 
-* Configure the `ssscli` tool
-
-    ```sh
-    cd /opt/ssscli
-    pip3 uninstall cryptography
-    pip3 install 'cryptography<38'
-    python3 setup.py develop
-    ```
-
-* Connect to the SE050 and clear its internal memory
-
-    ```sh
-    cd ~
-    ssscli connect se05x t1oi2c /dev/i2c-0:0x48
-    ssscli se05x reset
-    ```
-
-* Re-provision the SE050 as instructed above
-
-If you continue to experience difficulties, it might be necessary to
-unassign your SE050 device at edgelock2go.com and reassign it to the
-device group within the EdgeLock 2GO platform.
-
+_Note:_ For more details, see [README.md](https://github.com/nxp-imx-support/everest-dev-keys/blob/master/README.md).
 
 Wi-Fi Configuration
 -------------------
 
 Both connection to a typical Access Point (AP) via the `mlan0` interface
 Wi-Fi Direct (WFD) via the `wfd0` interface and can be used. Please
-refer to the
-[i.MX Linux Reference Manual](https://www.nxp.com/docs/en/reference-manual/IMX_REFERENCE_MANUAL.pdf)
-and
-[NXP Wireless SoC Features and Release Notes for Linux](https://www.nxp.com/docs/en/release-note/RN00104.pdf)
+refer to the [i.MX Linux Reference Manual](https://www.nxp.com/docs/en/reference-manual/RM00293.pdf)
+and [NXP Wireless SoC Features and Release Notes for Linux](https://www.nxp.com/docs/en/release-note/RN00104.pdf)
 for specific Wi-Fi details.
 
 Connection to an AP uses the `mlan0` interfaces. Wi-Fi Direct uses the
@@ -168,33 +138,81 @@ Connection to an AP uses the `mlan0` interfaces. Wi-Fi Direct uses the
         ```
 
 
-Preparing the ROS demos
------------------------
+Set up a CSMS server for the Demos
+----------------------------------
 
-Configure the `cloud.conf` file with your credentials (consult the EasyEVSE User
-Guide). This is necessary only on the EVSE system.
+NXP EasyEVSE on EVerest is intended to be used with a Charging Station Management System (CSMS).
 
-* EVSE
+To set up a CSMS, install and configure a CitrineOS OCPP server, install CitrineOS Operator UI,
+add a ChargePoint (EVSE) and NFC UIDs for authentication, consult the [Charging Station Management
+System (CSMS) Installation and Configuration User Guide](https://www.nxp.com/doc/UG10362).
+
+
+EVerest EVSE UI Application
+---------------------------
+
+NXP EasyEVSE on EVerest features a modern EVSE user interface built with NXP's GuiGuider and LVGL framework, designed for EVerest-based charging stations.
+
+The GUI application is installed by the Yocto build in `/usr/bin/` and is recommended to be started in the background:
+
+```sh
+/usr/bin/gui_guider &
+```
+
+
+Run the Demos
+-------------
+
+* Basic charging
 
     ```sh
-    cp .nxp-easyevse/cloud.conf ./
-    vi cloud.conf
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb.yaml
     ```
 
-
-Run the Demo
-------------
-
-* EVSE
+* Basic charging with NFC
 
     ```sh
-    .nxp-easyevse/evse-startup.sh all
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc.yaml
     ```
 
-* EV
+* ISO 15118-2 EIM charging
 
     ```sh
-    ./stx_pev_eth
+    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
+        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
+        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+
+    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb.yaml
+    ```
+
+* Basic charging with NFC and OCPP
+
+    ```sh
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfcocpp201.yaml
+    ```
+
+* 15118-2 EIM Charging with NFC and OCPP
+
+    ```sh
+    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
+        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
+        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfcocpp201.yaml
+    ```
+
+* ISO 15118-2 EIM with TLS 1.2
+
+    ```sh
+    cd /etc/everest
+
+    ./gen_pki.sh -s
+
+    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
+        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
+        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+
+    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb-tls.yaml
     ```
 
 
@@ -202,29 +220,30 @@ Dependencies
 ------------
 
 * meta-imx: <https://github.com/nxp-imx/meta-imx/>
-* meta-iot-cloud: <https://github.com/intel-iot-devkit/meta-iot-cloud>
-* nxp-easyevse-mpu: <https://github.com/nxp-imx-support/nxp-easyevse-mpu>
 
 
 Supported Boards
 ----------------
 
-* NXP i.MX 93 EVK (imx93evk)
-
+* EVSE: NXP i.MX 93 EVK
+* EV: NXP i.MXRT 106x EVK
 
 Releases
 --------
 
-Releases are tracked against the i.MX Linux software releases. Supported
-releases are listed below.
+Releases are tracked against the i.MX Linux software releases. Supported releases are listed below.
 
-* Mickledore
-    * 6.1.55_2.2.0
+* Walnascar
+    * imx-6.12.20-2.0.0
 
 
 Reference
 ---------
 
-* [i.MX Linux Yocto Project User's Guide](https://www.nxp.com/docs/en/user-guide/IMX_YOCTO_PROJECT_USERS_GUIDE.pdf)
-* [i.MX Linux User's Guide](https://www.nxp.com/docs/en/user-guide/IMX_LINUX_USERS_GUIDE.pdf)
+* [i.MX Linux Yocto Project User's Guide](https://www.nxp.com/docs/en/user-guide/UG10164.pdf)
+* [i.MX Linux User's Guide](https://www.nxp.com/docs/en/user-guide/UG10163.pdf)
+* [i.MX Linux Reference Manual](https://www.nxp.com/docs/en/reference-manual/RM00293.pdf)
 * [EdgeLock SE05x Plug & Trust Middleware 04.05.00](https://www.nxp.com/webapp/sps/download/license.jsp?colCode=SE05x-PLUG-TRUST-MW-v04-05-00&appType=file1&DOWNLOAD_ID=null)
+* [NXP EasyEVSE EV Charging Station Development Platform for MCU User Guide](https://www.nxp.com/webapp/Download?colCode=CCEVCPGSUG)
+* [Charging Station Management
+System (CSMS) Installation and Configuration User Guide](https://www.nxp.com/doc/UG10362)
