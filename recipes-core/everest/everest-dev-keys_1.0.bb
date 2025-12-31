@@ -6,9 +6,9 @@ AUTHOR = "Marouene Boubakri <marouene.boubakri@nxp.com>"
 
 DEV_KEYS_TAG ?= "everest-mpu-${PV}"
 DEV_KEYS_BRANCH ?= "master"
-SRC_URI = "git://git@bitbucket.sw.nxp.com/micrse/everest-dev-keys.git;branch=${DEV_KEYS_BRANCH};tag=${DEV_KEYS_TAG};protocol=ssh"
+SRC_URI = "git://github.com/nxp-imx-support/everest-dev-keys.git;branch=${DEV_KEYS_BRANCH};tag=${DEV_KEYS_TAG};protocol=https"
 
-SRCREV = "62f57cb186bb9e8fbe09b0d667d656ff727e744a"
+SRCREV = "db997fc632bbbffb2651c631e0614f86854645cb"
 
 S = "${WORKDIR}/git"
 

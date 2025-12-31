@@ -2,7 +2,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 NXP_FILES := "${THISDIR}/files"
 
 SRC_URI:append = " \
-    git://git@bitbucket.sw.nxp.com/micrse/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=ssh;subdir=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
+    git://github.com/nxp-imx-support/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=https;subdir=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
     file://configs/ \
     file://libnfc-configs/ \
     file://everest-core/0001-Integrated-config-file-for-basic-charging-and-ocpp.patch \
