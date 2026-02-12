@@ -10,10 +10,10 @@ Signed-off-by: Sachin Saxena <sachin.saxena@oss.nxp.com>
  modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf b/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
+diff --git a/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf b/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
 index f32cd8dc..2e5b99dd 100644
---- a/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
-+++ b/modules/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
+--- a/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
++++ b/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config/libnfc-nxp.conf
 @@ -53,7 +53,7 @@ NXPLOG_TML_LOGLEVEL=0x00
  # 0x01 - Not Used, kept to align with Android code
  # 0x02 - ALT_I2C

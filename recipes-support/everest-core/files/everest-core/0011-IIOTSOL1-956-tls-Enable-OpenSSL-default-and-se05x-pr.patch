@@ -63,10 +63,11 @@ Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
  lib/staging/tls/tls.cpp          | 25 +++----------------------
  2 files changed, 3 insertions(+), 41 deletions(-)
 
-diff --git a/lib/staging/tls/openssl_util.cpp b/lib/staging/tls/openssl_util.cpp
+diff --git a/lib/everest/tls/src/openssl_util.cpp b/lib/everest/tls/src/openssl_util.cpp
 index 58f724c24..678df2652 100644
---- a/lib/staging/tls/openssl_util.cpp
-+++ b/lib/staging/tls/openssl_util.cpp
+
+--- a/lib/everest/tls/src/openssl_util.cpp
++++ b/lib/everest/tls/src/openssl_util.cpp
 @@ -397,22 +397,8 @@ pkey_ptr load_private_key(const char* filename, const char* password) {
       * that causes key file to be opened an additional time
       */
@@ -102,10 +103,10 @@ index 58f724c24..678df2652 100644
      return private_key;
  }
  
-diff --git a/lib/staging/tls/tls.cpp b/lib/staging/tls/tls.cpp
+diff --git a/lib/everest/tls/src/tls.cpp b/lib/everest/tls/src/tls.cpp
 index 818942a56..6ef4be573 100644
---- a/lib/staging/tls/tls.cpp
-+++ b/lib/staging/tls/tls.cpp
+--- a/lib/everest/tls/src/tls.cpp
++++ b/lib/everest/tls/src/tls.cpp
 @@ -421,33 +421,14 @@ bool configure_ssl_ctx(bool is_server, SSL_CTX*& ctx, const char* ciphersuites,
                         const tls::Server::certificate_config_t& cert_config, bool required) {
      bool result{true};

@@ -17,7 +17,6 @@ SRC_URI:append = " \
     file://everest-core/0008-Avoid-power-budget-expiry.patch \
     file://everest-core/0009-Add-config-file-for-ISO2-with-ocpp201.patch \
     file://everest-core/0010-add-password-for-ISO2-with-OCPP201.patch \
-    file://everest-core/0011-IIOTSOL1-956-tls-Enable-OpenSSL-default-and-se05x-pr.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
     file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
     file://scripts/ \
@@ -35,7 +34,7 @@ EXTRA_OECMAKE:append = " \
 do_prepare_nxp_additions() {
     mkdir -p ${S}/scripts
     cp -r ${FILE_DIRNAME}/everest-core/everest.service ${WORKDIR}
-    cp -r ${NXP_FILES}/libnfc-configs/* ${S}/modules/PN7160TokenProvider/libnfc-nci_config
+    cp -r ${NXP_FILES}/libnfc-configs/* ${S}/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config
     cp -r ${NXP_FILES}/configs/* ${S}/config
     cp -r ${NXP_FILES}/scripts/* ${S}/scripts
     sed -i "1s/^/ev_add_module(SigboardNXP)\n/" ${S}/modules/CMakeLists.txt

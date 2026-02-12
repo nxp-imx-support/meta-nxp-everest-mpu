@@ -1,4 +1,4 @@
-SRC_URI = "https://github.com/EVerest/everest-admin-panel/releases/download/v0.2.0/everest-admin-panel.tar.gz;subdir=${WORKDIR}/${BP} \
+SRC_URI = "https://github.com/EVerest/everest-admin-panel/releases/download/v0.5.1/everest-admin-panel.tar.gz;subdir=${WORKDIR}/${BP} \
            npmsw://${THISDIR}/${BPN}/npm-shrinkwrap.json \
           "
 
