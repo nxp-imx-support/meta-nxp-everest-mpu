@@ -19,6 +19,7 @@ SRC_URI:append = " \
     file://everest-core/0010-add-password-for-ISO2-with-OCPP201.patch \
     file://everest-core/0011-IIOTSOL1-956-tls-Enable-OpenSSL-default-and-se05x-pr.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
+    file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
     file://scripts/ \
 "
 
