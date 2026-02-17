@@ -153,6 +153,7 @@ EVerest EVSE UI Application
 
 NXP EasyEVSE on EVerest features a modern EVSE user interface built with NXP's GuiGuider and LVGL framework, designed for EVerest-based charging stations.
 
+
 The GUI application is installed by the Yocto build in `/usr/bin/` and is recommended to be started in the background:
 
 ```sh
@@ -188,17 +189,17 @@ Run the Demos
 * Basic charging with NFC and OCPP
 
     ```sh
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfcocpp201.yaml
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
     ```
 
-* 15118-2 EIM Charging with NFC and OCPP
+* ISO 15118-2 EIM Charging with NFC and OCPP
 
     ```sh
     /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
         -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
         -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
 
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfcocpp201.yaml
+    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
     ```
 
 * ISO 15118-2 EIM with TLS 1.2
