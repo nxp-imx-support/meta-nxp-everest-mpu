@@ -153,6 +153,11 @@ EVerest EVSE UI Application
 
 NXP EasyEVSE on EVerest features a modern EVSE user interface built with NXP's GuiGuider and LVGL framework, designed for EVerest-based charging stations.
 
+* Weston Panel Modifier Script
+```bash
+# Remove panel (default behavior)
+/etc/everest/scripts/modify_panel.sh
+```
 
 The GUI application is installed by the Yocto build in `/usr/bin/` and is recommended to be started in the background:
 
