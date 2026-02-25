@@ -58,8 +58,8 @@ IMAGE_INSTALL += " \
         python3-spsdk \
         gui-guider \
         jq \
+        freerdp\
         "
-
 INSANE_SKIP:everest-framework += "already-stripped"
 
 # Onnxruntime dependency eigen download path is unreliable.
