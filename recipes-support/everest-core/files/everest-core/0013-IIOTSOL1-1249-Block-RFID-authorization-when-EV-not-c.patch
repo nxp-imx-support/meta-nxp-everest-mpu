@@ -1,4 +1,4 @@
-From 2afe7c2451091f14d747e155929dbd9392d48934 Mon Sep 17 00:00:00 2001
+From 794407b5cdcb07b2c0129e9d7724f89a061f2103 Mon Sep 17 00:00:00 2001
 From: Lalit Saini <lalit.saini@nxp.com>
 Date: Tue, 3 Mar 2026 11:03:09 +0530
 Subject: [PATCH] IIOTSOL1-1249: Block RFID authorization when EV not connected
@@ -39,7 +39,7 @@ index acac008a..8cbbd289 100644
      std::list<int> plug_in_queue;
      std::set<ProvidedIdToken> tokens_in_process;
 diff --git a/modules/EVSE/Auth/lib/AuthHandler.cpp b/modules/EVSE/Auth/lib/AuthHandler.cpp
-index afbcbdf4..657032df 100644
+index afbcbdf4..804ed8ad 100644
 --- a/modules/EVSE/Auth/lib/AuthHandler.cpp
 +++ b/modules/EVSE/Auth/lib/AuthHandler.cpp
 @@ -89,6 +89,22 @@ TokenHandlingResult AuthHandler::on_token(const ProvidedIdToken& provided_token)
@@ -71,10 +71,10 @@ index afbcbdf4..657032df 100644
      const int32_t connector_id = event.connector_id.value_or(1);
 +
 +    // Track EV connection state
-+    if (event_type == SessionEventEnum::SessionStarted) {
++    if (event.event == SessionEventEnum::SessionStarted) {
 +        evse_ev_connected[evse_id] = true;
 +        EVLOG_info << "EV connected on EVSE#" << evse_id << " - ready for authorization";
-+    } else if (event_type == SessionEventEnum::SessionFinished) {
++    } else if (event.event == SessionEventEnum::SessionFinished) {
 +        evse_ev_connected[evse_id] = false;
 +        EVLOG_info << "EV disconnected from EVSE#" << evse_id;
 +    }
