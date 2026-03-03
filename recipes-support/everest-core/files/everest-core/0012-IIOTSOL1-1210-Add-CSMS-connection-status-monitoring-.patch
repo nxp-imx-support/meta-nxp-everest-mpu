@@ -1,71 +1,41 @@
-From 8d4ccfea54f11a0933e1008436d87bfdbcc863bd Mon Sep 17 00:00:00 2001
+From 2482ae748004916106027f5d06bd3ee8c6b5d564 Mon Sep 17 00:00:00 2001
 From: Lalit Saini <lalit.saini@nxp.com>
-Date: Tue, 17 Feb 2026 13:07:21 +0530
-Subject: [PATCH] IIOTSOL1-1210: Add CSMS connection status monitoring with
- MQTT publishing
+Date: Tue, 3 Mar 2026 10:59:21 +0530
+Subject: [PATCH] IIOTSOL1-1210: Add CSMS connection status monitoring via MQTT
+ publishing
 
-What is changed:
-- Added atomic boolean csms_connection_status to OCPP201 class to track CSMS connectivity state
-- Enhanced connection_state_changed_callback to store and log connection status changes
-- Added MQTT publishing to 'everest_api/ocpp/csms_status' topic with connection state
+Implement real-time CSMS connectivity monitoring by publishing
+connection state changes to a dedicated MQTT topic. This enables
+external systems and UIs to track charge point backend connectivity
+without parsing EVerest's internal interface structure.
 
-Why it is changed:
-- Enable real-time monitoring of CSMS backend connectivity for external systems-UI
+Changes:
+- Publish connection status to 'everest_api/ocpp/csms_status' MQTT topic
+- Maintain backward compatibility with existing publish_is_connected()
 
-Technical context:
-- Uses std::atomic<bool> for thread-safe access across callbacks
-- MQTT topic publishes 'true'/'false' string values for connection state
-- Maintains existing publish_is_connected() functionality
+Technical Details:
+- MQTT payload: true when connected, false when disconnected
+- Topic: everest_api/ocpp/csms_status
 
 Signed-off-by: Lalit Saini <lalit.saini@nxp.com>
 ---
- modules/OCPP201/OCPP201.cpp | 12 +++++++++---
- modules/OCPP201/OCPP201.hpp |  2 ++
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ modules/EVSE/OCPP201/OCPP201.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/modules/OCPP201/OCPP201.cpp b/modules/OCPP201/OCPP201.cpp
-index 8b8c85c51..9cc3e753d 100644
---- a/modules/OCPP201/OCPP201.cpp
-+++ b/modules/OCPP201/OCPP201.cpp
-@@ -775,9 +775,15 @@ void OCPP201::ready() {
-     }
- 
-     callbacks.connection_state_changed_callback =
--        [this](const bool is_connected, const int /*configuration_slot*/,
--               const ocpp::v2::NetworkConnectionProfile& /*network_connection_profile*/,
--               const auto) { this->p_ocpp_generic->publish_is_connected(is_connected); };
-+    [this](const bool is_connected, const int /*configuration_slot*/,
-+           const ocpp::v2::NetworkConnectionProfile& /*network_connection_profile*/,
-+           const auto) { 
-+        this->csms_connection_status.store(is_connected);
-+        EVLOG_info << "CSMS Connection: " << (is_connected ? "TRUE" : "FALSE");
-+        this->p_ocpp_generic->publish_is_connected(is_connected);
-+        this->mqtt.publish("everest_api/ocpp/csms_status", is_connected ? "true" : "false");
-+    };
-+
+diff --git a/modules/EVSE/OCPP201/OCPP201.cpp b/modules/EVSE/OCPP201/OCPP201.cpp
+index 8b8a9db6..7168adb5 100644
+--- a/modules/EVSE/OCPP201/OCPP201.cpp
++++ b/modules/EVSE/OCPP201/OCPP201.cpp
+@@ -854,6 +854,9 @@ void OCPP201::ready() {
+                 ocpp_protocol_version = ocpp::OcppProtocolVersion::Unknown;
+             }
+             this->p_ocpp_generic->publish_is_connected(is_connected);
++            // Add direct MQTT publish for connection status
++            std::string connection_status_topic = "everest_api/ocpp/csms_status";
++            this->mqtt.publish(connection_status_topic, is_connected ? "true" : "false");
+         };
  
      callbacks.security_event_callback = [this](const ocpp::CiString<50>& event_type,
-                                                const std::optional<ocpp::CiString<255>>& tech_info) {
-diff --git a/modules/OCPP201/OCPP201.hpp b/modules/OCPP201/OCPP201.hpp
-index 819696c39..89dada59a 100644
---- a/modules/OCPP201/OCPP201.hpp
-+++ b/modules/OCPP201/OCPP201.hpp
-@@ -122,6 +122,7 @@ private:
- 
-     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
-     // insert your private definitions here
-+    std::atomic<bool> csms_connection_status{false};
-     std::shared_ptr<device_model::EverestDeviceModelStorage> everest_device_model_storage;
-     std::unique_ptr<TransactionHandler> transaction_handler;
-     Everest::SteadyTimer charging_schedules_timer;
-@@ -181,6 +182,7 @@ private:
-     /// \brief This function updates the additionalIdToken of the additionalTokenInfo field with the evcc_id.
-     void update_evcc_id_token(const int& evse_id, const std::string& evcc_id);
-     // ev@211cfdbe-f69a-4cd6-a4ec-f8aaa3d1b6c8:v1
-+    
- };
- 
- // ev@087e516b-124c-48df-94fb-109508c7cda9:v1
 -- 
 2.34.1
 
