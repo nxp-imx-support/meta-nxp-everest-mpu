@@ -1,19 +1,36 @@
-From d3cff391bc91cb99229c419ac62d53b11dc1a933 Mon Sep 17 00:00:00 2001
+From 2afe7c2451091f14d747e155929dbd9392d48934 Mon Sep 17 00:00:00 2001
 From: Lalit Saini <lalit.saini@nxp.com>
-Date: Tue, 17 Feb 2026 16:37:07 +0530
+Date: Tue, 3 Mar 2026 11:03:09 +0530
 Subject: [PATCH] IIOTSOL1-1249: Block RFID authorization when EV not connected
+
+What is changed:
+- Added evse_ev_connected map to AuthHandler to track EV connection state per EVSE
+- Modified on_token() to check EV connection status before processing RFID tokens
+- Enhanced handle_session_event() to update connection state on SessionStarted/SessionFinished events
+- Added logging for EV connection/disconnection events and blocked authorization attempts
+
+Why it is changed:
+- Prevent unauthorized charging sessions when no EV is physically connected
+- Improve security by blocking RFID authorization without vehicle presence
+- Align with charging station safety and security requirements
+
+Technical context:
+- Uses std::map<int32_t, bool> to track connection state per EVSE ID
+- Returns TokenHandlingResult::NO_CONNECTOR_AVAILABLE when EV not connected
+- Connection state updated based on SessionEventEnum events
+- Thread-safe access protected by existing event_mutex
 
 Signed-off-by: Lalit Saini <lalit.saini@nxp.com>
 ---
- modules/Auth/include/AuthHandler.hpp |  1 +
- modules/Auth/lib/AuthHandler.cpp     | 25 +++++++++++++++++++++++++
- 2 files changed, 26 insertions(+)
+ modules/EVSE/Auth/include/AuthHandler.hpp |  1 +
+ modules/EVSE/Auth/lib/AuthHandler.cpp     | 26 +++++++++++++++++++++++
+ 2 files changed, 27 insertions(+)
 
-diff --git a/modules/Auth/include/AuthHandler.hpp b/modules/Auth/include/AuthHandler.hpp
-index 72ce966f5..563d17eab 100644
---- a/modules/Auth/include/AuthHandler.hpp
-+++ b/modules/Auth/include/AuthHandler.hpp
-@@ -260,6 +260,7 @@ private:
+diff --git a/modules/EVSE/Auth/include/AuthHandler.hpp b/modules/EVSE/Auth/include/AuthHandler.hpp
+index acac008a..8cbbd289 100644
+--- a/modules/EVSE/Auth/include/AuthHandler.hpp
++++ b/modules/EVSE/Auth/include/AuthHandler.hpp
+@@ -268,6 +268,7 @@ private:
      ReservationHandler reservation_handler;
  
      std::map<int, std::unique_ptr<EVSEContext>> evses;
@@ -21,17 +38,15 @@ index 72ce966f5..563d17eab 100644
  
      std::list<int> plug_in_queue;
      std::set<ProvidedIdToken> tokens_in_process;
-diff --git a/modules/Auth/lib/AuthHandler.cpp b/modules/Auth/lib/AuthHandler.cpp
-index 19ec5106f..1d651fb27 100644
---- a/modules/Auth/lib/AuthHandler.cpp
-+++ b/modules/Auth/lib/AuthHandler.cpp
-@@ -81,7 +81,22 @@ TokenHandlingResult AuthHandler::on_token(const ProvidedIdToken& provided_token)
- 
-     // check if token is already currently processed
-     EVLOG_info << "Received new token: " << everest::staging::helpers::redact(provided_token);
-+    
-+    // Check if EV is connected before processing token
+diff --git a/modules/EVSE/Auth/lib/AuthHandler.cpp b/modules/EVSE/Auth/lib/AuthHandler.cpp
+index afbcbdf4..657032df 100644
+--- a/modules/EVSE/Auth/lib/AuthHandler.cpp
++++ b/modules/EVSE/Auth/lib/AuthHandler.cpp
+@@ -89,6 +89,22 @@ TokenHandlingResult AuthHandler::on_token(const ProvidedIdToken& provided_token)
+     EVLOG_info << "Received new token: " << everest::helpers::redact(provided_token);
      const auto referenced_evses = this->get_referenced_evses(provided_token);
+ 
++    // Check if EV is connected before processing token
 +    bool ev_connected = false;
 +    for (const auto& evse_id : referenced_evses) {
 +        if (evse_ev_connected.find(evse_id) != evse_ev_connected.end() && evse_ev_connected[evse_id]) {
@@ -39,31 +54,33 @@ index 19ec5106f..1d651fb27 100644
 +            break;
 +        }
 +    }
-+    
++
 +    if (!ev_connected) {
 +        EVLOG_warning << "RFID token received but EV not connected - ignoring authorization";
 +        return TokenHandlingResult::NO_CONNECTOR_AVAILABLE;
 +    }
-+    // END OF ADDED BLOCK
- 
++
++
++
      if (!this->is_token_already_in_process(provided_token, referenced_evses)) {
          // process token if not already in process
-@@ -734,6 +749,16 @@ void AuthHandler::handle_session_event(const int evse_id, const SessionEvent& ev
+         this->tokens_in_process.insert(provided_token);
+@@ -750,6 +766,16 @@ void AuthHandler::handle_session_event(const int evse_id, const SessionEvent& ev
      std::unique_lock<std::mutex> lk(this->event_mutex);
      // When connector id is not specified, it is assumed to be '1'.
      const int32_t connector_id = event.connector_id.value_or(1);
-+    
++
 +    // Track EV connection state
-+    if (event.event == SessionEventEnum::SessionStarted) {
++    if (event_type == SessionEventEnum::SessionStarted) {
 +        evse_ev_connected[evse_id] = true;
 +        EVLOG_info << "EV connected on EVSE#" << evse_id << " - ready for authorization";
-+    } else if (event.event == SessionEventEnum::SessionFinished) {
++    } else if (event_type == SessionEventEnum::SessionFinished) {
 +        evse_ev_connected[evse_id] = false;
 +        EVLOG_info << "EV disconnected from EVSE#" << evse_id;
 +    }
-+    
++
      if (evse_id <= 0) {
-         EVLOG_error << "Handle session event: Evse id is <= 0>: That should not be possible.";
+         EVLOG_error << "Handle session event: Evse id is <= 0: That should not be possible.";
          return;
 -- 
 2.34.1
