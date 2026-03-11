@@ -1,0 +1,32 @@
+[Unit]
+Description=Weston RDP Compositor
+After=weston.service
+Requires=weston.service
+
+[Service]
+Type=simple
+User=root
+PAMName=login
+
+# Separates runtime directory for RDP Weston
+Environment=XDG_RUNTIME_DIR=/run/rdp-weston
+Environment=WAYLAND_DISPLAY=wayland-rdp
+Environment=WESTON_DISABLE_ABSTRACT_FD=1
+
+# Creates runtime directory before running
+ExecStartPre=/bin/mkdir -p /run/rdp-weston
+ExecStartPre=/bin/chmod 0700 /run/rdp-weston
+
+
+ExecStart=/usr/bin/weston \
+    --backend=rdp-backend.so \
+    --socket=wayland-rdp \
+    --rdp-tls-cert=/etc/xdg/weston/rdp.crt \
+    --rdp-tls-key=/etc/xdg/weston/rdp.key
+
+# Makes it resilient
+Restart=on-failure
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target

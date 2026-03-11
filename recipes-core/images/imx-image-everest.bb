@@ -58,7 +58,8 @@ IMAGE_INSTALL += " \
         python3-spsdk \
         gui-guider \
         jq \
-        freerdp\
+        freerdp \
+        weston-rdp-service \
         "
 INSANE_SKIP:everest-framework += "already-stripped"
 
@@ -102,6 +103,10 @@ ROOTFS_POSTPROCESS_COMMAND:append = " \
 
 ROOTFS_POSTPROCESS_COMMAND:append = " \
     ${@bb.utils.contains('DISTRO_FEATURES', 'LVDS_DISPLAY_SUPPORT', 'calibrate_lvds;', '', d)} \
+"
+
+ROOTFS_POSTPROCESS_COMMAND:append = " \
+    ${@bb.utils.contains('PACKAGE_INSTALL', 'weston-rdp-service', 'generate_rdp_tls_key;', '',d)} \
 "
 
 install_demo() {
@@ -180,4 +185,23 @@ calibrate_lvds() {
 	fi
 	echo '# LVDS calibration matrix' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
 	echo 'SUBSYSTEM=="input", KERNEL=="event[0-9]*", ENV{ID_INPUT_TOUCHSCREEN}=="1", ENV{LIBINPUT_CALIBRATION_MATRIX}="4.023985 -0.041337 0.003694 -0.086464 4.011504 0.000577"' >> ${IMAGE_ROOTFS}${sysconfdir}/udev/rules.d/touchscreen.rules
+}
+
+do_rootfs[depends] += " \
+    ${@bb.utils.contains('PACKAGE_INSTALL', 'weston-rdp-service', 'openssl-native:do_populate_sysroot', '', d)} \
+"
+
+generate_rdp_tls_key() {
+    dest=${IMAGE_ROOTFS}/etc/xdg/weston
+    mkdir -p $dest
+
+    if [ ! -f $dest/rdp.key ]; then
+        openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout $dest/rdp.key \
+            -out $dest/rdp.crt \
+            -days 9999 \
+            -subj "/CN=weston"
+        chmod 0600 $dest/rdp.key
+        chmod 0644 $dest/rdp.crt
+    fi
 }
