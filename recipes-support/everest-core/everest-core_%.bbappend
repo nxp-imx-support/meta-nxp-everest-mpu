@@ -37,6 +37,7 @@ do_prepare_nxp_additions() {
     cp -r ${NXP_FILES}/libnfc-configs/* ${S}/modules/HardwareDrivers/NfcReaders/PN7160TokenProvider/libnfc-nci_config
     cp -r ${NXP_FILES}/configs/* ${S}/config
     cp -r ${NXP_FILES}/scripts/* ${S}/scripts
+    cp -r ${UNPACKDIR}/git/modules/SigboardNXP ${S}/modules
     sed -i "1s/^/ev_add_module(SigboardNXP)\n/" ${S}/modules/CMakeLists.txt
 }
 
