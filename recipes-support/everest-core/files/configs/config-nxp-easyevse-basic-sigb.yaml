@@ -30,15 +30,11 @@ active_modules:
       hack_present_current_offset: 0
       hack_simplified_mode_limit_10A: false
       hack_skoda_enyaq: false
-      hack_sleep_in_cable_check: 0
-      hack_sleep_in_cable_check_volkswagen: 0
       has_ventilation: false
       initial_meter_value_timeout_ms: 5000
       inoperative_error_use_vendor_id: false
       lock_connector_in_state_b: true
       logfile_suffix: session_uuid
-      max_current_export_A: 32
-      max_current_import_A: 32
       payment_enable_contract: false
       payment_enable_eim: false
       raise_mrec9: false
