@@ -1,0 +1,158 @@
+From 852e584178f36341aecc56846c3c5027db720874 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Wed, 22 Apr 2026 01:13:33 +0200
+Subject: [PATCH] IIOTSOL1-1521: Add support of NXP SE050 Secure Element
+
+This commit reworks OpenSSL provider integration to enable coexistence
+between the default OpenSSL provider and the NXP SE05x provider, as a
+foundation for adding SE050 Secure Element support to Everest.
+
+SE05x provides hardware-backed EVP_KEYMGMT and EVP_SIGNATURE
+implementations that offload private-key operations to the secure
+element. However, it relies on the default provider for generic PEM and
+DER decoding to parse reference keys before resolving embedded SE05x key
+handles.
+
+Previous implementations attempted to select the SE05x provider using
+OpenSSL property queries (provider=nxp_prov or ?provider=nxp_prov) during
+TLS context creation or key loading. This approach proved invalid:
+ - Strict property filters excluded default-provider decoders, causing
+   key parsing to fail.
+ - Relaxed filters still resulted in key objects being instantiated by
+   the default provider, preventing SE05x offload.
+ - Applying provider filters at SSL_CTX level either broke TLS entirely
+   or forced software-only cryptographic operations.
+
+The correct integration model avoids restrictive property queries and
+instead relies on provider loading order to establish algorithm
+precedence. By loading the SE05x provider before the default provider,
+OpenSSL can transparently prefer SE05x for private-key operations while
+continuing to use the default provider for TLS ciphers, digests, and
+decoders.
+
+Changes include:
+ - Explicit loading of SE05x and default providers in a shared context
+ - Removal of provider property queries from TLS and key-loading paths
+ - Migration to SSL_CTX_new_ex() with a NULL property query
+ - Removal of custom_key flags and related selection logic
+ - Build-time definition of the custom provider name (nxp_prov) in CMake
+
+This commit lays the groundwork for SE050 support in Everest. While the
+basic provider coexistence model is now in place, additional work is
+required to fully validate and productize SE050-backed TLS in Everest.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ lib/everest/evse_security/CMakeLists.txt      |  4 +++-
+ .../crypto/openssl/openssl_provider.cpp       | 22 +++++++++----------
+ lib/everest/tls/src/tls.cpp                   |  8 +++----
+ 3 files changed, 17 insertions(+), 17 deletions(-)
+
+diff --git a/lib/everest/evse_security/CMakeLists.txt b/lib/everest/evse_security/CMakeLists.txt
+index 307391e..5c35993 100644
+--- a/lib/everest/evse_security/CMakeLists.txt
++++ b/lib/everest/evse_security/CMakeLists.txt
+@@ -30,8 +30,10 @@ if(USING_TPM2)
+     set(CUSTOM_PROVIDER_NAME "tpm2")
+ endif()
+ 
++set(USING_CUSTOM_PROVIDER ON)
++
+ if(USING_CUSTOM_PROVIDER)
+-    set(CUSTOM_PROVIDER_NAME "custom_provider")
++    set(CUSTOM_PROVIDER_NAME "nxp_prov")
+ endif()
+ 
+ if(USING_TPM2 OR USING_CUSTOM_PROVIDER)
+diff --git a/lib/everest/evse_security/lib/evse_security/crypto/openssl/openssl_provider.cpp b/lib/everest/evse_security/lib/evse_security/crypto/openssl/openssl_provider.cpp
+index e9d276a..2fa30c5 100644
+--- a/lib/everest/evse_security/lib/evse_security/crypto/openssl/openssl_provider.cpp
++++ b/lib/everest/evse_security/lib/evse_security/crypto/openssl/openssl_provider.cpp
+@@ -131,14 +131,12 @@ OpenSSLProvider::OpenSSLProvider() {
+         }
+ 
+         // load providers for global context
+-        (void)load_global(mode_t::default_provider);
+         (void)load_global(mode_t::custom_provider);
+-        (void)set_propstr(nullptr, mode_t::default_provider);
++        (void)load_global(mode_t::default_provider);
+ 
+         // load providers for tls context
+-        (void)load_tls(mode_t::default_provider);
+         (void)load_tls(mode_t::custom_provider);
+-        (void)set_propstr(s_tls_libctx_p, mode_t::default_provider);
++        (void)load_tls(mode_t::default_provider);
+     }
+ }
+ 
+@@ -213,23 +211,23 @@ void OpenSSLProvider::cleanup() {
+     // at the point this is called logging may not be available
+     // relying on OpenSSL errors
+     std::lock_guard guard(s_mux);
+-    if (OSSL_PROVIDER_unload(s_tls_prov_custom_p) == 0) {
+-        ERR_print_errors_fp(stderr);
+-    }
+     if (OSSL_PROVIDER_unload(s_tls_prov_default_p) == 0) {
+         ERR_print_errors_fp(stderr);
+     }
+-    if (OSSL_PROVIDER_unload(s_global_prov_custom_p) == 0) {
++    if (OSSL_PROVIDER_unload(s_tls_prov_custom_p) == 0) {
+         ERR_print_errors_fp(stderr);
+     }
+     if (OSSL_PROVIDER_unload(s_global_prov_default_p) == 0) {
+         ERR_print_errors_fp(stderr);
+     }
++    if (OSSL_PROVIDER_unload(s_global_prov_custom_p) == 0) {
++        ERR_print_errors_fp(stderr);
++    }
+ 
+-    s_tls_prov_custom_p = nullptr;
+     s_tls_prov_default_p = nullptr;
+-    s_global_prov_custom_p = nullptr;
++    s_tls_prov_custom_p = nullptr;
+     s_global_prov_default_p = nullptr;
++    s_global_prov_custom_p = nullptr;
+ 
+     OSSL_LIB_CTX_free(s_tls_libctx_p);
+ 
+@@ -251,10 +249,10 @@ bool OpenSSLProvider::supports_provider_custom() {
+ 
+ OpenSSLProvider::flags_underlying_t OpenSSLProvider::s_flags = 0;
+ 
+-OSSL_PROVIDER* OpenSSLProvider::s_global_prov_default_p = nullptr;
+ OSSL_PROVIDER* OpenSSLProvider::s_global_prov_custom_p = nullptr;
+-OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_default_p = nullptr;
++OSSL_PROVIDER* OpenSSLProvider::s_global_prov_default_p = nullptr;
+ OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_custom_p = nullptr;
++OSSL_PROVIDER* OpenSSLProvider::s_tls_prov_default_p = nullptr;
+ OSSL_LIB_CTX* OpenSSLProvider::s_tls_libctx_p = nullptr;
+ 
+ OpenSSLProvider::OpenSSLProvider() = default;
+diff --git a/lib/everest/tls/src/tls.cpp b/lib/everest/tls/src/tls.cpp
+index 25aade8..4d72e2a 100644
+--- a/lib/everest/tls/src/tls.cpp
++++ b/lib/everest/tls/src/tls.cpp
+@@ -421,14 +421,14 @@ bool configure_ssl_ctx(bool is_server, SSL_CTX*& ctx, const char* ciphersuites,
+                        const tls::Server::certificate_config_t& cert_config, bool required) {
+     bool result{true};
+ 
+-    if (is_server) {
+-        OpenSSLProvider provider;
++    OpenSSLProvider provider;
+ 
++    if (is_server) {
+         const SSL_METHOD* method = TLS_server_method();
+-        ctx = SSL_CTX_new_ex(provider, provider.propquery_default(), method);
++        ctx = SSL_CTX_new_ex(provider, NULL, method);
+     } else {
+         const SSL_METHOD* method = TLS_client_method();
+-        ctx = SSL_CTX_new(method);
++        ctx = SSL_CTX_new_ex(provider, NULL, method);
+     }
+ 
+     if (ctx == nullptr) {
+-- 
+2.34.1
+

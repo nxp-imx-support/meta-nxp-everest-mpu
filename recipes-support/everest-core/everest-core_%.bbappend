@@ -7,6 +7,7 @@ SRC_URI:append = " \
     git://git@bitbucket.sw.nxp.com/micrse/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=ssh;destsuffix=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
     file://configs/ \
     file://libnfc-configs/ \
+    file://everest-core/0001-IIOTSOL1-1521-Add-support-of-NXP-SE050-Secure-Elemen.patch \
     file://everest-core/0002-Change-RFID-token-Provider-to-PN7160TokenProvider.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
     file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
@@ -18,8 +19,13 @@ SRCREV_sigboardnxp = "${AUTOREV}"
 
 addtask do_prepare_nxp_additions after do_patch before do_configure
 
+DEPENDS:append = "\
+    openssl-provider-se050 \
+"
+
 EXTRA_OECMAKE:append = " \
     -DISO15118_2_GENERATE_AND_INSTALL_CERTIFICATES=OFF \
+    -DUSING_CUSTOM_PROVIDER=ON \
 "
 
 do_prepare_nxp_additions() {
