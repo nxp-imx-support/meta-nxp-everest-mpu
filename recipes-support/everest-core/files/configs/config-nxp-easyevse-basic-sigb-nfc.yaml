@@ -130,3 +130,22 @@ active_modules:
         validation_result: Accepted
     connections: {}
     module: DummyTokenValidator
+################################################################
+  evse_manager_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: evse_manager_consumer_API
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: EvseManager0
+  auth_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: auth_consumer_API
+    connections:
+      auth:
+        - implementation_id: main
+          module_id: auth
