@@ -9,6 +9,7 @@ SRC_URI:append = " \
     file://libnfc-configs/ \
     file://everest-core/0001-IIOTSOL1-1521-Add-support-of-NXP-SE050-Secure-Elemen.patch \
     file://everest-core/0002-Change-RFID-token-Provider-to-PN7160TokenProvider.patch \
+    file://everest-core/0003-fix-Evse15118D20-Prevent-EVSE-that-supports-multi-ph.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
     file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
     file://scripts/ \

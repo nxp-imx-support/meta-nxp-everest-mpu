@@ -1,0 +1,29 @@
+From aa62ee8ad7b841d4c0e7610b94f9ce0528fc2cad Mon Sep 17 00:00:00 2001
+From: Peter Tian <peter.tian@nxp.com>
+Date: Fri, 17 Apr 2026 05:41:10 +0200
+Subject: [PATCH] fix(Evse15118D20): Prevent EVSE that supports multi-phase AC
+ from submitting duplicate service IDs
+
+Signed-off-by: Peter Tian <peter.tian@nxp.com>
+---
+ modules/EVSE/Evse15118D20/charger/ISO15118_chargerImpl.cpp | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/modules/EVSE/Evse15118D20/charger/ISO15118_chargerImpl.cpp b/modules/EVSE/Evse15118D20/charger/ISO15118_chargerImpl.cpp
+index 67cef510..2529f93c 100644
+--- a/modules/EVSE/Evse15118D20/charger/ISO15118_chargerImpl.cpp
++++ b/modules/EVSE/Evse15118D20/charger/ISO15118_chargerImpl.cpp
+@@ -854,7 +854,9 @@ void ISO15118_chargerImpl::handle_update_energy_transfer_modes(
+         case types::iso15118::EnergyTransferMode::AC_single_phase_core:
+         case types::iso15118::EnergyTransferMode::AC_two_phase:
+         case types::iso15118::EnergyTransferMode::AC_three_phase_core:
+-            services.push_back(dt::ServiceCategory::AC);
++	    if (std::find(services.begin(), services.end(), dt::ServiceCategory::AC) == services.end()) {
++                services.push_back(dt::ServiceCategory::AC);
++	    }
+             break;
+         case types::iso15118::EnergyTransferMode::AC_BPT:
+         case types::iso15118::EnergyTransferMode::AC_BPT_DER:
+-- 
+2.34.1
+
