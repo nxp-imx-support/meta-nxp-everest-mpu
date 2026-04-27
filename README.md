@@ -221,6 +221,15 @@ Run the Demos
     manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb-tls.yaml
     ```
 
+* ISO 15118-2 Plug & Charge (PnC) charging
+
+    ```sh
+    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
+        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
+        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+
+    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb-ocpp201-pnc.yaml
+    ```
 
 Dependencies
 ------------

@@ -1,0 +1,214 @@
+active_modules:
+  evse_manager_1:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+      evse_id: RO*NXP*E1234567*1
+      ac_enforce_hlc: true
+      ac_hlc_enabled: true
+      external_ready_to_start_charging: true
+      central_contract_validation_allowed: true
+      session_logging: true
+      session_logging_path: /tmp/everest
+      session_logging_xml: false
+    connections:
+      ac_rcd:
+        - implementation_id: rcd
+          module_id: SigboardNXP0
+      bsp:
+        - module_id: SigboardNXP0
+          implementation_id: board_support
+      powermeter_grid_side:
+        - module_id: SigboardNXP0
+          implementation_id: powermeter
+      powermeter_car_side:
+        - module_id: SigboardNXP0
+          implementation_id: powermeter
+      hlc:
+        - implementation_id: charger
+          module_id: EvseV2G0
+      slac:
+        - implementation_id: main
+          module_id: EvseSlac0
+  EvseSecurity0:
+    config_module:
+      csms_ca_bundle: iso2/ca/csms/CSMS_CA_BUNDLE.pem
+      csms_leaf_cert_directory: iso2/client/csms
+      csms_leaf_key_directory: iso2/client/csms
+      mf_ca_bundle: iso2/ca/mf/MF_CA_BUNDLE.pem
+      mo_ca_bundle: iso2/ca/mo/MO_CA_BUNDLE.pem
+      private_key_password: '123456'
+      secc_leaf_cert_directory: iso2/client/cso
+      secc_leaf_key_directory: iso2/client/cso
+      v2g_ca_bundle: iso2/ca/v2g/V2G_CA_BUNDLE.pem
+    module: EvseSecurity
+  EvseSlac0:
+    config_implementation:
+      main:
+        device: eth0
+    module: EvseSlac
+  EvseV2G0:
+    config_module:
+      supported_DIN70121: false
+      tls_security: force
+      verify_contract_cert_chain: true
+    connections:
+      security:
+        - implementation_id: main
+          module_id: EvseSecurity0
+    module: EvseV2G
+  SigboardNXP0:
+    config_module:
+      caps_max_current_A: 32
+      caps_min_current_A: 0
+      serial_port: /dev/ttyLP2
+    module: SigboardNXP
+  ocpp:
+    module: OCPP201
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      auth:
+        - module_id: auth
+          implementation_id: main
+      system:
+        - module_id: system
+          implementation_id: main
+      security:
+        - module_id: EvseSecurity0
+          implementation_id: main
+      evse_energy_sink:
+        - module_id: grid_connection_point
+          implementation_id: external_limits
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: external_limits
+      reservation:
+        - module_id: auth
+          implementation_id: reservation
+    access:
+      config:
+        allow_global_read: true
+        allow_global_write: false
+        allow_set_read_only: false
+        modules:
+          auth:
+            allow_read: true
+            allow_write: true
+            allow_set_read_only: true
+  persistent_store:
+    module: PersistentStore
+  token_provider_1:
+    module: DummyTokenProviderManual
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 600
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+        - module_id: token_provider_1
+          implementation_id: main
+        - module_id: ocpp
+          implementation_id: auth_provider
+        - module_id: evse_manager_1
+          implementation_id: token_provider
+      token_validator:
+        - module_id: ocpp
+          implementation_id: auth_validator
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      kvs:
+        - module_id: persistent_store
+          implementation_id: main
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      slice_ampere: 1.0
+      slice_watt: 1000
+      schedule_total_duration: 5
+    connections:
+      energy_trunk:
+        - module_id: grid_connection_point
+          implementation_id: energy_grid
+  evse_manager_1_ocpp_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 1
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1
+          implementation_id: energy_grid
+  evse_manager_1_api_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 1
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: energy_grid
+  grid_connection_point:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 0
+    config_module:
+      fuse_limit_A: 40.0
+      phase_count: 1
+    connections:
+      price_information: []
+      energy_consumer:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: energy_grid
+  api:
+    module: API
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      ocpp:
+        - module_id: ocpp
+          implementation_id: ocpp_generic
+      error_history:
+        - module_id: error_history
+          implementation_id: error_history
+      evse_energy_sink:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: external_limits
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+  system:
+    module: System
+  evse_manager_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: evse_manager_consumer_API
+    connections:
+      evse_manager:
+        - implementation_id: evse
+          module_id: evse_manager_1
+  auth_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: auth_consumer_API
+    connections:
+      auth:
+        - implementation_id: main
+          module_id: auth
