@@ -1,0 +1,178 @@
+active_modules:
+################################################################
+  evse_manager_1:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+      connector_type: "cType2"
+      payment_enable_contract: false
+      has_ventilation: false
+      supported_iso_ac_bpt: true
+      ac_hlc_enabled: true
+      ac_enforce_hlc: true
+      contract_certificate_installation_enabled: false
+      bpt_channel: Unified
+      bpt_generator_mode: GridFollowing
+      bpt_grid_code_island_method: Passive
+    connections:
+      bsp:
+        - module_id: sigboard_NXP_1
+          implementation_id: board_support
+      ac_rcd:
+        - module_id: sigboard_NXP_1
+          implementation_id: rcd
+      powermeter_grid_side:
+        - module_id: yeti_driver_1
+          implementation_id: powermeter
+      slac:
+        - module_id: evse_slac_1
+          implementation_id: main
+      hlc:
+        - module_id: iso15118_charger
+          implementation_id: charger
+      store:
+        - module_id: persistent_store
+          implementation_id: main
+################################################################
+  yeti_driver_1:
+    module: YetiSimulator
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+    connections: {}
+################################################################
+  evse_security_1:
+    module: EvseSecurity
+    config_module:
+      mf_ca_bundle: iso20/ca/mf/MF_ROOT_CA.pem
+      mo_ca_bundle: iso20/ca/mo/MO_CA_BUNDLE.pem
+      v2g_ca_bundle: iso20/ca/v2g/V2G_ROOT_CA.pem
+      secc_leaf_cert_directory: iso20/client/cso
+      secc_leaf_key_directory: iso20/client/cso
+      private_key_password: "123456"
+    connections: {}
+################################################################
+  evse_slac_1:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth0
+    connections: {}
+################################################################
+  iso15118_charger:
+    module: Evse15118D20
+    config_module:
+      device: eth0
+      enforce_tls_1_3: true
+      supported_dynamic_mode: false
+      supported_scheduled_mode: true
+      negative_bidirectional_limits: true
+    connections:
+      security:
+        - module_id: evse_security_1
+          implementation_id: main
+      iso15118_vas: []
+################################################################
+  sigboard_NXP_1:
+    module: SigboardNXP
+    config_module:
+      serial_port: /dev/ttyLP2
+      baud_rate: 115200
+      meter_present: false
+      caps_min_current_A: 0
+      caps_max_current_A: 32
+      debug: false
+    connections: {}
+################################################################
+  auth_dummy:
+    module: Auth
+    config_module:
+      selection_algorithm: PlugEvents
+      connection_timeout: 60
+    connections:
+      token_provider:
+        - module_id: token_provider_dummy
+          implementation_id: main
+      token_validator:
+        - module_id: token_validator_dummy
+          implementation_id: main
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      kvs:
+        - module_id: persistent_store
+          implementation_id: main
+################################################################
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      nominal_ac_voltage: 230.0
+      update_interval: 1
+    connections:
+      energy_trunk:
+        - module_id: grid_connection_point
+          implementation_id: energy_grid
+################################################################
+  grid_connection_point:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32
+      phase_count: 3
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1
+          implementation_id: energy_grid
+      powermeter:
+        - module_id: yeti_driver_1
+          implementation_id: powermeter
+      price_information: []
+################################################################
+  persistent_store:
+    module: PersistentStore
+################################################################
+  token_provider_dummy:
+    module: DummyTokenProvider
+    config_implementation:
+      main:
+        token: DEADBEEF
+        type: RFID
+        timeout: 10
+        connector_id: 0
+    connections:
+      evse:
+        - implementation_id: evse
+          module_id: evse_manager_1
+################################################################
+  token_validator_dummy:
+    module: DummyTokenValidator
+    config_implementation:
+      main:
+        validation_result: Accepted
+        validation_reason: Token valid
+        sleep: 0.5
+    connections: {}
+################################################################
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+################################################################
+  system:
+    module: System
+    config_module:
+      ResetDelay: 0
+    connections:
+      store:
+        - module_id: persistent_store
+          implementation_id: main
+################################################################
+x-module-layout: {}
