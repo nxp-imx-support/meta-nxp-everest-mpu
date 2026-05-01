@@ -3,59 +3,14 @@ active_modules:
     config_module:
       ac_enforce_hlc: true
       ac_hlc_enabled: true
-      ac_hlc_use_5percent: true
-      ac_nominal_voltage: 230
-      ac_with_soc: false
-      autocharge_use_slac_instead_of_hlc: false
       cable_check_enable_imd_self_test: false
-      cable_check_wait_below_60V_before_finish: true
-      cable_check_wait_number_of_imd_measurements: 1
-      central_contract_validation_allowed: false
-      charge_mode: AC
       connector_id: 1
-      connector_type: Unknown
-      contract_certificate_installation_enabled: true
-      dbg_hlc_auth_after_tstep: false
-      dc_isolation_voltage_V: 0
+      connector_type: cType2
       disable_authentication: true
-      enable_autocharge: false
-      ev_receipt_required: false
       evse_id: RO*NXP*E1234567*1
-      evse_id_din: 49A80737A45678
-      external_ready_to_start_charging: false
-      fail_on_powermeter_errors: true
-      hack_allow_bpt_with_iso2: false
-      hack_fix_hlc_integer_current_requests: false
-      hack_pause_imd_during_precharge: false
-      hack_present_current_offset: 0
-      hack_simplified_mode_limit_10A: false
-      hack_skoda_enyaq: false
       has_ventilation: false
-      initial_meter_value_timeout_ms: 5000
-      inoperative_error_use_vendor_id: false
-      lock_connector_in_state_b: true
-      logfile_suffix: session_uuid
-      payment_enable_contract: true
-      payment_enable_eim: true
-      raise_mrec9: false
-      request_zero_power_in_idle: false
-      sae_j2847_2_bpt_enabled: false
-      sae_j2847_2_bpt_mode: V2G
-      session_id_type: UUID
       session_logging: true
       session_logging_path: /tmp/everest
-      session_logging_xml: true
-      sleep_before_enabling_pwm_hlc_mode_ms: 500
-      soft_over_current_measurement_noise_A: 0.5
-      soft_over_current_timeout_ms: 7000
-      soft_over_current_tolerance_percent: 10
-      state_F_after_fault_ms: 300
-      switch_3ph1ph_cp_state: X1
-      switch_3ph1ph_delay_s: 10
-      uk_smartcharging_random_delay_at_any_change: false
-      uk_smartcharging_random_delay_enable: false
-      uk_smartcharging_random_delay_max_duration: 600
-      zero_power_allow_ev_to_ignore_pause: false
       zero_power_ignore_pause: false
     connections:
       ac_rcd:
@@ -76,51 +31,28 @@ active_modules:
     module: EvseManager
   EvseSecurity0:
     config_module:
-      csms_ca_bundle: iso2/ca/csms/CSMS_ROOT_CA.pem
+      csms_ca_bundle: iso2/ca/csms/CSMS_CA_BUNDLE.pem
       csms_leaf_cert_directory: iso2/client/csms
       csms_leaf_key_directory: iso2/client/csms
-      mf_ca_bundle: iso2/ca/mf/MF_ROOT_CA.pem
-      mo_ca_bundle: iso2/ca/mo/MO_ROOT_CA.pem
+      mf_ca_bundle: iso2/ca/mf/MF_CA_BUNDLE.pem
+      mo_ca_bundle: iso2/ca/mo/MO_CA_BUNDLE.pem
       private_key_password: '123456'
       secc_leaf_cert_directory: iso2/client/cso
       secc_leaf_key_directory: iso2/client/cso
-      v2g_ca_bundle: iso2/ca/v2g/V2G_ROOT_CA.pem
-    connections: {}
+      v2g_ca_bundle: iso2/ca/v2g/V2G_CA_BUNDLE.pem
     module: EvseSecurity
   EvseSlac0:
     config_implementation:
       main:
-        ac_mode_five_percent: true
-        chip_reset_delay_ms: 100
-        chip_reset_timeout_ms: 500
-        debug_simulate_failed_matching: false
         device: eth0
-        do_chip_reset: false
-        link_status_detection: false
-        link_status_retry_ms: 100
-        link_status_timeout_ms: 10000
-        number_of_sounds: 10
-        publish_mac_on_first_parm_req: false
-        publish_mac_on_match_cnf: true
-        reset_instead_of_fail: true
         set_key_timeout_ms: 500
-        sounding_attenuation_adjustment: 0
-    connections: {}
     module: EvseSlac
   EvseV2G0:
     config_module:
-      auth_timeout_eim: 300
-      auth_timeout_pnc: 55
-      device: eth0
-      enable_sdp_server: true
       supported_DIN70121: false
-      supported_ISO15118_2: true
-      terminate_connection_on_failed_response: false
       tls_key_logging: true
       tls_key_logging_path: /tmp/everest
-      tls_security: allow
-      tls_timeout: 15000
-      verify_contract_cert_chain: false
+      tls_security: force
     connections:
       security:
         - implementation_id: main
@@ -128,20 +60,13 @@ active_modules:
     module: EvseV2G
   SigboardNXP0:
     config_module:
-      baud_rate: 115200
-      meter_present: true
       caps_max_current_A: 32
       caps_min_current_A: 0
-      debug: false
       serial_port: /dev/ttyLP2
-    connections: {}
     module: SigboardNXP
   auth:
     config_module:
       connection_timeout: 60
-      ignore_connector_faults: false
-      master_pass_group_id: ''
-      prioritize_authorization_over_stopping_transaction: true
       selection_algorithm: PlugEvents
     connections:
       evse_manager:
@@ -155,19 +80,6 @@ active_modules:
           module_id: token_validator
     module: Auth
   energy_manager:
-    config_module:
-      debug: false
-      nominal_ac_voltage: 230
-      schedule_interval_duration: 60
-      schedule_total_duration: 1
-      slice_ampere: 0.5
-      slice_watt: 500
-      switch_3ph1ph_max_nr_of_switches_per_session: 0
-      switch_3ph1ph_power_hysteresis_W: 200
-      switch_3ph1ph_switch_limit_stickyness: DontChange
-      switch_3ph1ph_time_hysteresis_s: 600
-      switch_3ph1ph_while_charging_mode: Never
-      update_interval: 1
     connections:
       energy_trunk:
         - implementation_id: energy_grid
@@ -200,9 +112,7 @@ active_modules:
         sleep: 0.25
         validation_reason: Token seems valid
         validation_result: Accepted
-    connections: {}
     module: DummyTokenValidator
-################################################################
   evse_manager_api:
     config_module:
       cfg_communication_check_to_s: 0
@@ -221,3 +131,4 @@ active_modules:
       auth:
         - implementation_id: main
           module_id: auth
+

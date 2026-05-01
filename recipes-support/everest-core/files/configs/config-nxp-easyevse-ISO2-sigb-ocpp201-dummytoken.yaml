@@ -1,5 +1,4 @@
 active_modules:
-################################################################
   evse_manager_1:
     module: EvseManager
     mapping:
@@ -7,145 +6,68 @@ active_modules:
         evse: 1
     config_module:
       connector_id: 1
+      connector_type: cType2
       evse_id: RO*NXP*E1234567*1
-      evse_id_din: 49A80737A45678
-      connector_type: Unknown
-      contract_certificate_installation_enabled: true
       ac_enforce_hlc: true
       ac_hlc_enabled: true
-      ac_hlc_use_5percent: true
-      ac_with_soc: false
-      ac_nominal_voltage: 230
-      request_zero_power_in_idle: false
-      external_ready_to_start_charging: false
-      fail_on_powermeter_errors: true
-      autocharge_use_slac_instead_of_hlc: false
       cable_check_enable_imd_self_test: false
-      cable_check_wait_below_60V_before_finish: true
-      cable_check_wait_number_of_imd_measurements: 1
-      central_contract_validation_allowed: false
-      charge_mode: AC
-      dbg_hlc_auth_after_tstep: false
-      dc_isolation_voltage_V: 0
-      disable_authentication: false
-      enable_autocharge: false
-      ev_receipt_required: false
-      hack_allow_bpt_with_iso2: false
-      hack_fix_hlc_integer_current_requests: false
-      hack_pause_imd_during_precharge: false
-      hack_present_current_offset: 0
-      hack_simplified_mode_limit_10A: false
-      hack_skoda_enyaq: false
       has_ventilation: false
-      initial_meter_value_timeout_ms: 5000
-      inoperative_error_use_vendor_id: false
-      lock_connector_in_state_b: true
-      logfile_suffix: session_uuid
-      payment_enable_contract: true
-      payment_enable_eim: true
-      raise_mrec9: false
-      sae_j2847_2_bpt_enabled: false
-      sae_j2847_2_bpt_mode: V2G
-      session_id_type: UUID
       session_logging: true
       session_logging_path: /tmp/everest
       session_logging_xml: false
-      sleep_before_enabling_pwm_hlc_mode_ms: 500
-      soft_over_current_measurement_noise_A: 0.5
-      soft_over_current_timeout_ms: 7000
-      soft_over_current_tolerance_percent: 10
-      state_F_after_fault_ms: 300
-      switch_3ph1ph_cp_state: X1
-      switch_3ph1ph_delay_s: 10
-      uk_smartcharging_random_delay_at_any_change: false
-      uk_smartcharging_random_delay_enable: false
-      uk_smartcharging_random_delay_max_duration: 600
-      zero_power_allow_ev_to_ignore_pause: false
       zero_power_ignore_pause: false
     connections:
       ac_rcd:
         - implementation_id: rcd
-          module_id: SigboardNXP1
+          module_id: SigboardNXP0
       bsp:
-        - module_id: SigboardNXP1
+        - module_id: SigboardNXP0
           implementation_id: board_support
       powermeter_car_side:
         - implementation_id: powermeter
-          module_id: SigboardNXP1
+          module_id: SigboardNXP0
+      powermeter_grid_side:
+        - implementation_id: powermeter
+          module_id: SigboardNXP0
       hlc:
         - implementation_id: charger
-          module_id: EvseV2G1
+          module_id: EvseV2G0
       slac:
         - implementation_id: main
-          module_id: EvseSlac1
-################################################################
-  EvseSecurity1:
+          module_id: EvseSlac0
+  EvseSecurity0:
     config_module:
-      csms_ca_bundle: iso2/ca/csms/CSMS_ROOT_CA.pem
+      csms_ca_bundle: iso2/ca/csms/CSMS_CA_BUNDLE.pem
       csms_leaf_cert_directory: iso2/client/csms
       csms_leaf_key_directory: iso2/client/csms
-      mf_ca_bundle: iso2/ca/mf/MF_ROOT_CA.pem
-      mo_ca_bundle: iso2/ca/mo/MO_ROOT_CA.pem
+      mf_ca_bundle: iso2/ca/mf/MF_CA_BUNDLE.pem
+      mo_ca_bundle: iso2/ca/mo/MO_CA_BUNDLE.pem
       private_key_password: '123456'
       secc_leaf_cert_directory: iso2/client/cso
       secc_leaf_key_directory: iso2/client/cso
-      v2g_ca_bundle: iso2/ca/v2g/V2G_ROOT_CA.pem
-    connections: {}
+      v2g_ca_bundle: iso2/ca/v2g/V2G_CA_BUNDLE.pem
     module: EvseSecurity
-################################################################
-  EvseSlac1:
+  EvseSlac0:
     config_implementation:
       main:
-        ac_mode_five_percent: true
-        chip_reset_delay_ms: 100
-        chip_reset_timeout_ms: 500
-        debug_simulate_failed_matching: false
         device: eth0
-        do_chip_reset: false
-        link_status_detection: false
-        link_status_retry_ms: 100
-        link_status_timeout_ms: 10000
-        number_of_sounds: 10
-        publish_mac_on_first_parm_req: false
-        publish_mac_on_match_cnf: true
-        reset_instead_of_fail: true
         set_key_timeout_ms: 500
-        sounding_attenuation_adjustment: 0
-    connections: {}
     module: EvseSlac
-################################################################
-  EvseV2G1:
+  EvseV2G0:
     config_module:
-      auth_timeout_eim: 300
-      auth_timeout_pnc: 55
-      device: eth0
-      enable_sdp_server: true
       supported_DIN70121: false
-      supported_ISO15118_2: true
-      terminate_connection_on_failed_response: false
-      tls_key_logging: false
-      tls_key_logging_path: /tmp
       tls_security: prohibit
-      tls_timeout: 15000
-      verify_contract_cert_chain: false
     connections:
       security:
         - implementation_id: main
-          module_id: EvseSecurity1
+          module_id: EvseSecurity0
     module: EvseV2G
-
-################################################################
-  SigboardNXP1:
+  SigboardNXP0:
     config_module:
-      baud_rate: 115200
       caps_max_current_A: 32
       caps_min_current_A: 0
-      debug: false
       serial_port: /dev/ttyLP2
-      meter_present: true
-    connections: {}
     module: SigboardNXP
-################################################################
   ocpp:
     module: OCPP201
     connections:
@@ -159,7 +81,7 @@ active_modules:
         - module_id: system
           implementation_id: main
       security:
-        - module_id: EvseSecurity1
+        - module_id: EvseSecurity0
           implementation_id: main
       evse_energy_sink:
         - module_id: grid_connection_point
@@ -179,10 +101,8 @@ active_modules:
             allow_read: true
             allow_write: true
             allow_set_read_only: true
-################################################################
   persistent_store:
     module: PersistentStore
-################################################################
   token_provider_dummy:
     module: DummyTokenProvider
     config_implementation:
@@ -193,14 +113,10 @@ active_modules:
       evse:
         - implementation_id: evse
           module_id: evse_manager_1
-###########
-
   auth_dummy:
     module: Auth
     config_module:
       connection_timeout: 60
-      prioritize_authorization_over_stopping_transaction: true
-      selection_algorithm: FindFirst
       ignore_connector_faults: true
     connections:
       token_provider:
@@ -215,37 +131,23 @@ active_modules:
       kvs:
         - module_id: persistent_store
           implementation_id: main
-###########
   token_validator_dummy:
     module: DummyTokenValidator
     config_implementation:
       main:
         sleep: .5
         validation_reason: Token seems DUMMY
-        # Accepted / Invalid 
         validation_result: Accepted
-    connections: {}
-################################################################
   energy_manager:
     module: EnergyManager
     config_module:
-      debug: false
-      nominal_ac_voltage: 230
-      schedule_interval_duration: 60
       slice_ampere: 1.0
       slice_watt: 1000
       schedule_total_duration: 5
-      switch_3ph1ph_max_nr_of_switches_per_session: 0
-      switch_3ph1ph_power_hysteresis_W: 200
-      switch_3ph1ph_switch_limit_stickyness: DontChange
-      switch_3ph1ph_time_hysteresis_s: 600
-      switch_3ph1ph_while_charging_mode: Never
-      update_interval: 1
     connections:
       energy_trunk:
         - module_id: grid_connection_point
           implementation_id: energy_grid
-################################################################
   evse_manager_1_ocpp_sink:
     module: EnergyNode
     mapping:
@@ -258,7 +160,6 @@ active_modules:
       energy_consumer:
         - module_id: evse_manager_1
           implementation_id: energy_grid
-################################################################
   evse_manager_1_api_sink:
     module: EnergyNode
     mapping:
@@ -271,7 +172,6 @@ active_modules:
       energy_consumer:
         - module_id: evse_manager_1_ocpp_sink
           implementation_id: energy_grid
-################################################################
   grid_connection_point:
     module: EnergyNode
     mapping:
@@ -285,7 +185,6 @@ active_modules:
       energy_consumer:
         - module_id: evse_manager_1_api_sink
           implementation_id: energy_grid
-################################################################
   api:
     module: API
     connections:
@@ -301,7 +200,6 @@ active_modules:
       evse_energy_sink:
         - module_id: evse_manager_1_api_sink
           implementation_id: external_limits
-################################################################
   error_history:
     module: ErrorHistory
     config_implementation:
@@ -309,8 +207,6 @@ active_modules:
         database_path: /tmp/error_history.db
   system:
     module: System
-################################################################
-################################################################
   evse_manager_api:
     config_module:
       cfg_communication_check_to_s: 0

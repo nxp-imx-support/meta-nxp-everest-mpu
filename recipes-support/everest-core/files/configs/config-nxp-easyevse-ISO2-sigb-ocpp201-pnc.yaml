@@ -6,6 +6,7 @@ active_modules:
         evse: 1
     config_module:
       connector_id: 1
+      connector_type: cType2
       evse_id: RO*NXP*E1234567*1
       ac_enforce_hlc: true
       ac_hlc_enabled: true
