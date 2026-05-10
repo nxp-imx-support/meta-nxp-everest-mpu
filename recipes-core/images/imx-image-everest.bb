@@ -95,6 +95,24 @@ IMAGE_INSTALL += " \
     openssl-provider-se050 \
 "
 
+# SDK customization
+TOOLCHAIN_TARGET_TASK:remove = " \
+    coreutils \
+"
+
+TOOLCHAIN_TARGET_TASK:append = " \
+    wayland \
+    wayland-dev \
+    libxkbcommon \
+    libxkbcommon-dev \
+    lvgl-dev \
+    lvgl-staticdev \
+    lv-drivers-dev \
+    lv-drivers-staticdev \
+    paho-mqtt-c \
+    paho-mqtt-c-dev \
+"
+
 ROOTFS_POSTPROCESS_COMMAND:append = " \
     install_demo; \
     prepare_sigb_network_interface; \
