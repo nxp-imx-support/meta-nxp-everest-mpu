@@ -1,0 +1,33 @@
+From ebc100b3fc404267b805abf987d45ae110f98ef6 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Sun, 10 May 2026 19:30:28 +0200
+Subject: [PATCH] Enable in-SE050 ECDH ephemeral key generation for TLS
+ handshakes
+
+Set SSS_ENABLE_SE05X_EC_KEY_GEN_WITH_NO_KEYID in
+sssProvider_key_mgmt_ec.c so ephemeral ECDH keys are generated
+inside the secure element rather than on the host.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ provider/sssProvider_key_mgmt_ec.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/provider/sssProvider_key_mgmt_ec.c b/provider/sssProvider_key_mgmt_ec.c
+index f4037de..25da7bf 100644
+--- a/provider/sssProvider_key_mgmt_ec.c
++++ b/provider/sssProvider_key_mgmt_ec.c
+@@ -54,7 +54,7 @@
+     For TLS use case, this will result in
+     ephemeral key created at this location and used for ECDH.
+ */
+-//#define SSS_ENABLE_SE05X_EC_KEY_GEN_WITH_NO_KEYID
++#define SSS_ENABLE_SE05X_EC_KEY_GEN_WITH_NO_KEYID
+ 
+ /* clang-format on */
+ 
+-- 
+2.34.1
+
