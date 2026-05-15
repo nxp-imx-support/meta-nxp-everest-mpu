@@ -16,11 +16,14 @@ active_modules:
       payment_enable_contract: false
     connections:
       bsp:
-        - module_id: SigboardNXP0
-          implementation_id: board_support
+        - implementation_id: board_support
+          module_id: SigboardNXP0
       powermeter_grid_side:
         - module_id: SigboardNXP0
           implementation_id: powermeter
+      powermeter_car_side:
+        - implementation_id: powermeter
+          module_id: SigboardNXP0
   SigboardNXP0:
     config_module:
       caps_max_current_A: 32

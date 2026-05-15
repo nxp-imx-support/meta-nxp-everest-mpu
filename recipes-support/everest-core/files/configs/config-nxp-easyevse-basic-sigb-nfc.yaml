@@ -1,5 +1,6 @@
 active_modules:
   EvseManager0:
+    module: EvseManager
     config_module:
       cable_check_enable_imd_self_test: false
       connector_id: 1
@@ -13,7 +14,9 @@ active_modules:
       bsp:
         - implementation_id: board_support
           module_id: SigboardNXP0
-    module: EvseManager
+      powermeter_car_side:
+        - implementation_id: powermeter
+          module_id: SigboardNXP0
   PN7160TokenProvider0:
     module: PN7160TokenProvider
   SigboardNXP0:
