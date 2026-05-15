@@ -212,4 +212,15 @@ active_modules:
       auth:
         - implementation_id: main
           module_id: auth
-
+  ocpp_api:
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    module: ocpp_consumer_API
+    connections:
+      ocpp:
+        - implementation_id: ocpp_generic
+          module_id: ocpp
+      data_transfer:
+        - module_id: ocpp
+          implementation_id: data_transfer
