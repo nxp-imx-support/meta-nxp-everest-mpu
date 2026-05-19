@@ -11,6 +11,7 @@ active_modules:
       session_logging: true
       session_logging_path: /tmp/everest
       zero_power_ignore_pause: false
+      payment_enable_contract: false
     connections:
       ac_rcd:
         - implementation_id: rcd
@@ -41,6 +42,7 @@ active_modules:
       v2g_ca_bundle: iso2/ca/v2g/V2G_CA_BUNDLE.pem
     module: EvseSecurity
   EvseSlac0:
+    module: EvseSlac
     config_implementation:
       main:
         device: eth0
