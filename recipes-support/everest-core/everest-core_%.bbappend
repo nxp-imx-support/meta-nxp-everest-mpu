@@ -12,6 +12,8 @@ SRC_URI:append = " \
     file://everest-core/0003-fix-Evse15118D20-Prevent-EVSE-that-supports-multi-ph.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
     file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
+    file://everest-core/everest.service \
+    file://everest-core/everest.default \
     file://scripts/ \
 "
 
@@ -29,6 +31,21 @@ EXTRA_OECMAKE:append = " \
     -DUSING_CUSTOM_PROVIDER=ON \
 "
 
+# Default demo config: change DEMO_CONFIG to repoint /etc/everest/config.yaml
+# at build time. At runtime the operator can also override via
+# /etc/default/everest (EVEREST_CONFIG=...).
+DEMO_CONFIG ?= "config-nxp-easyevse-ISO2-sigb-nfc.yaml"
+
+# --- systemd integration --------------------------------------------------
+# The upstream everest-core base recipe does not install the unit. The
+# bbappend now owns it together with /etc/everest/, so unit + configs + the
+# default symlink ship and version as one package.
+inherit systemd
+SYSTEMD_SERVICE:${PN} = "everest.service"
+SYSTEMD_AUTO_ENABLE:${PN} = "enable"
+# --------------------------------------------------------------------------
+
+
 do_prepare_nxp_additions() {
     mkdir -p ${S}/scripts
     cp -r ${FILE_DIRNAME}/everest-core/everest.service ${WORKDIR}
@@ -45,7 +62,26 @@ do_install:append() {
     for f in ${NXP_FILES}/scripts/*; do
         install -m 0755 $f "${D}${sysconfdir}/everest/scripts"
     done
+
+    # systemd unit + env file
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${UNPACKDIR}/everest-core/everest.service \
+        ${D}${systemd_system_unitdir}/everest.service
+
+    install -d ${D}${sysconfdir}/default
+    install -m 0644 ${UNPACKDIR}/everest-core/everest.default \
+        ${D}${sysconfdir}/default/everest
+
+    # Make the demo config the default.
+    if [ ! -e ${D}${sysconfdir}/everest/${DEMO_CONFIG} ]; then
+        bbfatal "Demo config ${DEMO_CONFIG} not found in /etc/everest after install"
+    fi
+    ln -sf ${DEMO_CONFIG} ${D}${sysconfdir}/everest/config.yaml
 }
 
-# Include scripts in the rootfilesystem
-FILES:${PN} += "${sysconfdir}/everest"
+# Include scripts, unit, env file and the default config symlink in the package
+FILES:${PN} += " \
+    ${sysconfdir}/everest \
+    ${sysconfdir}/default/everest \
+    ${systemd_system_unitdir}/everest.service \
+"

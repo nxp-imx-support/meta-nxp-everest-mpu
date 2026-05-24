@@ -1,0 +1,4 @@
+# EVerest manager defaults
+# Switch the active config by changing the path below, then:
+#   systemctl restart everest
+EVEREST_CONFIG=/etc/everest/config.yaml

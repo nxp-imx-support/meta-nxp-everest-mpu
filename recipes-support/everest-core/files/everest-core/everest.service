@@ -1,0 +1,26 @@
+[Unit]
+Description=EVerest manager
+Documentation=https://everest.github.io
+Requires=mosquitto.service
+After=mosquitto.service network-online.target
+Wants=network-online.target
+# Only start if a config has been selected. The everest-core bbappend
+# installs /etc/everest/config.yaml as a symlink to the demo config.
+ConditionFileNotEmpty=/etc/everest/config.yaml
+
+# Crash-loop protection: if EVerest fails to come up >10 times in 5 min,
+# stop trying so we don't melt the eMMC log writing the same backtrace.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+# Pick up EVEREST_CONFIG (optional override) and any other env from the
+# operator's drop-in. The unit still works without this file.
+EnvironmentFile=-/etc/default/everest
+ExecStart=/usr/bin/manager --conf ${EVEREST_CONFIG}
+
+[Install]
+WantedBy=multi-user.target
