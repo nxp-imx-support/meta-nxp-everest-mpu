@@ -117,6 +117,7 @@ ROOTFS_POSTPROCESS_COMMAND:append = " \
     install_demo; \
     prepare_sigb_network_interface; \
     configure_security; \
+    hide_weston_panel; \
 "
 
 ROOTFS_POSTPROCESS_COMMAND:append = " \
@@ -221,5 +222,17 @@ generate_rdp_tls_key() {
             -subj "/CN=weston"
         chmod 0600 $dest/rdp.key
         chmod 0644 $dest/rdp.crt
+    fi
+}
+
+hide_weston_panel() {
+    ini="${IMAGE_ROOTFS}${sysconfdir}/xdg/weston/weston.ini"
+
+    # If panel-position already exists under [shell], replace it
+    if sed -n '/^\[shell\]/,/^\[/{/panel-position=/p}' "$ini" | grep -q panel-position; then
+        sed -i '/^\[shell\]/,/^\[/{s/^panel-position=.*/panel-position=none/}' "$ini"
+    else
+        # Otherwise, add it inside the [shell] section
+        sed -i '/^\[shell\]/a panel-position=none' "$ini"
     fi
 }
