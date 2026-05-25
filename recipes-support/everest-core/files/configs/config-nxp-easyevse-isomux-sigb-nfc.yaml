@@ -57,11 +57,15 @@ active_modules:
           module_id: EvseSecurity0
     module: EvseV2G
   SigboardNXP0:
-    config_module:
-      caps_max_current_A: 32
-      caps_min_current_A: 0
-      serial_port: /dev/ttyLP2
     module: SigboardNXP
+    config_module:
+      serial_port: /dev/ttyLP2
+      caps_min_current_A: 0
+      caps_max_current_A: 32
+    connections:
+      iso15118_extensions:
+        - module_id: Evse15118D200
+          implementation_id: extensions
   auth:
     config_module:
       connection_timeout: 60

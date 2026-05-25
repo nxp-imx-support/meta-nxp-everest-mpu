@@ -75,6 +75,10 @@ active_modules:
       serial_port: /dev/ttyLP2
       caps_min_current_A: 0
       caps_max_current_A: 32
+    connections:
+      iso15118_extensions:
+        - module_id: Evse15118D200
+          implementation_id: extensions
   auth:
     module: Auth
     config_module:
