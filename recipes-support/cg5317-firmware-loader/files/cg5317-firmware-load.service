@@ -1,0 +1,78 @@
+[Unit]
+Description=Load Lumissil CG5317 PLC firmware (HomePlug GreenPHY for ISO 15118)
+Documentation=https://www.lumissil.com/
+DefaultDependencies=no
+After=local-fs.target sysinit.target sys-subsystem-net-devices-eth0.device
+Wants=sys-subsystem-net-devices-eth0.device
+Before=everest.service
+
+[Service]
+# host_loading_service daemonizes after writing the firmware: the
+# foreground exec exits 0 while a background child stays alive
+# maintaining the modem connection. Type=forking + GuessMainPID lets
+# systemd track that daemonized child instead of orphaning it to init.
+Type=forking
+GuessMainPID=yes
+
+EnvironmentFile=/etc/lumissil/cg5317_0.cfg
+
+# host_loading_service uses raw L2 frames over the configured ETH
+# interface (no IP). Bring the link admin-up if it isn't already,
+# then poll operstate until it reaches "up" so the chip is actually
+# reachable when the loader runs. Six-second timeout, after which
+# the unit fails and the Requires= chain blocks everest.service.
+ExecStartPre=/sbin/ip link set ${ETH_IFNAME} up
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do \
+    [ "$(cat /sys/class/net/${ETH_IFNAME}/operstate)" = "up" ] && exit 0; \
+    sleep 0.2; \
+done; echo "${ETH_IFNAME} did not reach operstate=up within 6s" >&2; exit 1'
+
+# Wait for the lms_eth2spi kernel driver to register its sysfs node.
+# host_loading_service reads /sys/devices/lms_eth2spi/modem_status
+# to verify the modem is ready before sending firmware; if the file
+# is missing the loader prints "failed to open ..." and exits 1.
+# The node appears when the lms_eth2spi driver finishes probing.
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 50); do \
+    [ -r /sys/devices/lms_eth2spi/modem_status ] && exit 0; \
+    sleep 0.2; \
+done; echo "lms_eth2spi sysfs node not present within 10s" >&2; exit 1'
+
+# Wait for the chip to transition out of BootROM (modem_status="1")
+# into FW-running (modem_status != "1", typically "0" or empty).
+# The driver's spi_modem_status atomic is updated in
+# lms_update_modem_status_flag() based on CG2H mailbox 0 bits:
+# bit 0 set => "1" (BootROM), bit 1 set => "0" (FW running).
+# Then a brief settle so the PLC PHY is ready for SLAC packets.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 80); do \
+    s=$(cat /sys/devices/lms_eth2spi/modem_status 2>/dev/null); \
+    [ "$s" != "1" ] && exit 0; \
+    sleep 0.5; \
+done; echo "chip did not exit BootROM (modem_status still 1) within 40s" >&2; \
+exit 1'
+ExecStartPost=/bin/sleep 3
+
+# All parameters come from /etc/lumissil/cg5317_0.cfg. To change the
+# firmware path, interface name, GPIO line, or RMII flag, edit that
+# file and `systemctl restart cg5317-firmware-load.service`.
+ExecStart=/home/root/res/cg5317/host/host_loading_service ${RMII_FLAG} \
+    -g ${CG_RESET_GPIO_CHIP} -o ${CG_RESET_GPIO_OFFSET} \
+    -f ${FW_PATH} -c ${CFG_PATH} \
+    -e ${ETH_IFNAME} -i ${IFACE_MODE}
+
+# Wait for the PHY-side firmware to boot after the loader writes it.
+# This is the chip-side boot delay, distinct from the host-side link
+# wait above. 5s is empirically sufficient on i.MX93 EVK; bump if
+# EVerest's SLAC fails with "interface not ready".
+ExecStartPost=/bin/sleep 5
+
+StandardOutput=journal
+StandardError=journal
+
+# Do not auto-restart: an FW load failure typically means a hardware
+# or config issue that needs operator attention; auto-retry would
+# mask the root cause. The Requires= from everest.service will block
+# EVerest from starting if this unit fails, which is the safe behavior.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

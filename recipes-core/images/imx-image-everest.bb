@@ -54,6 +54,7 @@ IMAGE_INSTALL += " \
         systemd-analyze \
         fbida \
         lumissil-hpgp-sdk \
+        cg5317-firmware-loader \
         lms-eth2spi \
         python3-spsdk \
         gui-guider \
