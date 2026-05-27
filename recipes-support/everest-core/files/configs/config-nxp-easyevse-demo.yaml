@@ -1,0 +1,424 @@
+# =============================================================================
+# config-nxp-easyevse-demo.yaml
+#
+# Single-config demo for NXP EasyEVSE on EVerest. Exercises in one binary:
+#
+#   * IEC 61851-1 basic charging      (PWM-only, no SLAC, fallback path)
+#   * ISO 15118-2 EIM                 (NFC token, PN7160)
+#   * ISO 15118-2 PnC                 (TLS 1.2, contract certs, OCPP 2.0.1)
+#   * ISO 15118-20 AC EIM             (TLS 1.3, NFC token)
+#   * ISO 15118-20 AC BPT             (bidirectional / discharging)
+#   * OCPP 2.0.1                      (CSMS-driven authorization)
+#
+# Protocol selection is automatic. SLAC + SDP between the EVCC and the
+# IsoMux pick ISO2 vs ISO20; EVs that do not initiate SLAC fall back to
+# IEC 61851-1 basic charging. The EvseManager exposes one charger
+# interface to the rest of the stack regardless of the chosen path.
+#
+# Two EvseSecurity instances are used because the cert trees in /etc/everest
+# are split per protocol (iso2/ and iso20/), and the module only takes one
+# set of cert paths per instance.
+#
+# -----------------------------------------------------------------------------
+# AUTHORIZATION
+# -----------------------------------------------------------------------------
+# NFC: PN7160TokenProvider feeds Auth. Validation is tried in this order:
+#   1. OCPP auth_validator         (realistic CSMS-driven path)
+#   2. DummyTokenValidator         (offline fallback - demo robustness)
+# Remove the dummy fallback for production - it accepts any tag if OCPP
+# is unreachable.
+#
+# PnC: OCPP central contract validation
+# (central_contract_validation_allowed). No dummy fallback for PnC -
+# contract cert chains need real cryptographic validation.
+#
+# -----------------------------------------------------------------------------
+# DISCHARGING (V2X / AC BPT)
+# -----------------------------------------------------------------------------
+# ISO20 BPT support is advertised via:
+#     supported_iso_ac_bpt: true
+#     bpt_channel: Unified
+#     bpt_generator_mode: GridFollowing
+#     bpt_grid_code_island_method: Passive
+#     Evse15118D20.negative_bidirectional_limits: true
+#
+# The SigboardNXP `force_discharge_meter: true` flag is intentionally
+# omitted - it makes the powermeter report negative power unconditionally,
+# which is fine for protocol bringup but misleading on a live demo.
+#
+# With the flag off:
+#   * Protocol negotiation goes through the BPT path correctly when the
+#     EV requests negative power.
+#   * EvseManager's present_charging_power carries the right sign;
+#     dashboard logic should key off that, not off the raw meter.
+#   * The Sigboard CT sensor itself does not signal direction, so the
+#     raw /everest/external/powermeter/* topics show |P| only.
+#     Workaround in gui_guider/custom.c: derive sign from EvseManager
+#     BPT state and apply it before display.
+# =============================================================================
+
+active_modules:
+
+  # --- Charger front-end ------------------------------------------------------
+  evse_manager_1:
+    module: EvseManager
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      connector_id: 1
+      connector_type: cType2
+      evse_id: RO*NXP*E1234567*1
+      cable_check_enable_imd_self_test: false
+      # Offer HLC (ISO 15118-2 / -20) but do not require it.
+      # ac_enforce_hlc=false lets EVs that only do IEC 61851-1 (PWM-only,
+      # no SLAC, no V2G) charge normally; the HLC stack still serves EVs
+      # that initiate SLAC.
+      ac_hlc_enabled: true
+      ac_enforce_hlc: false
+      payment_enable_eim: true
+      # OCPP central PnC validation
+      central_contract_validation_allowed: true
+      payment_enable_contract: true
+      contract_certificate_installation_enabled: false
+      external_ready_to_start_charging: true
+      has_ventilation: false
+      session_logging: true
+      session_logging_path: /tmp/everest
+      session_logging_xml: false
+      # ISO 15118-20 AC BPT
+      supported_iso_ac_bpt: true
+      bpt_channel: Unified
+      bpt_generator_mode: GridFollowing
+      bpt_grid_code_island_method: Passive
+    connections:
+      bsp:
+        - module_id: SigboardNXP0
+          implementation_id: board_support
+      ac_rcd:
+        - module_id: SigboardNXP0
+          implementation_id: rcd
+      powermeter_grid_side:
+        - module_id: SigboardNXP0
+          implementation_id: powermeter
+      powermeter_car_side:
+        - module_id: SigboardNXP0
+          implementation_id: powermeter
+      slac:
+        - module_id: EvseSlac0
+          implementation_id: main
+      # HLC goes through IsoMux which routes to either EvseV2G (ISO2) or
+      # Evse15118D20 (ISO20) based on EVCC SDP negotiation.
+      hlc:
+        - module_id: IsoMux0
+          implementation_id: charger
+      store:
+        - module_id: persistent_store
+          implementation_id: main
+
+  # --- Hardware abstraction ---------------------------------------------------
+  SigboardNXP0:
+    module: SigboardNXP
+    config_module:
+      serial_port: /dev/ttyLP2
+      caps_min_current_A: 0
+      caps_max_current_A: 32
+    connections:
+      # iso15118_extensions wired to Evse15118D20 only: the BPT / ISO 15118-20
+      # discharge metadata flows through this interface, and EvseV2G (ISO 2)
+      # does not drive the sigboard's discharge state. Leaving this iso20-only
+      # is correct for an AC + BPT demo.
+      iso15118_extensions:
+        - module_id: Evse15118D200
+          implementation_id: extensions
+  EvseSlac0:
+    module: EvseSlac
+    config_implementation:
+      main:
+        device: eth0
+        set_key_timeout_ms: 500
+
+  # --- Protocol multiplexer ---------------------------------------------------
+  # IsoMux exposes a single ISO15118 "charger" interface to the EvseManager
+  # and routes traffic to ISO2 or ISO20 based on what the EV requests in SDP.
+  IsoMux0:
+    module: IsoMux
+    config_module:
+      device: eth0
+      tls_security: force
+    connections:
+      iso2:
+        - module_id: EvseV2G0
+          implementation_id: charger
+      ext2:
+        - module_id: EvseV2G0
+          implementation_id: extensions
+      iso20:
+        - module_id: Evse15118D200
+          implementation_id: charger
+      ext20:
+        - module_id: Evse15118D200
+          implementation_id: extensions
+      # Mux SDP runs over TLS too; reuse the ISO2 security instance.
+      security:
+        - module_id: EvseSecurity0
+          implementation_id: main
+      security_secondary:
+        - module_id: EvseSecurity20
+          implementation_id: main
+
+  # --- ISO 15118-2 path (EIM + PnC) -------------------------------------------
+  EvseV2G0:
+    module: EvseV2G
+    config_module:
+      device: lo
+      tls_security: allow
+      enable_sdp_server: false
+      verify_contract_cert_chain: true
+    connections:
+      security:
+        - module_id: EvseSecurity0
+          implementation_id: main
+
+  # --- ISO 15118-20 AC path (EIM + BPT) ---------------------------------------
+  Evse15118D200:
+    module: Evse15118D20
+    config_module:
+      device: lo
+      enable_sdp_server: false
+      tls_negotiation_strategy: ACCEPT_CLIENT_OFFER
+      supported_scheduled_mode: true
+      supported_dynamic_mode: false
+      negative_bidirectional_limits: true
+    connections:
+      security:
+        - module_id: EvseSecurity20
+          implementation_id: main
+      iso15118_vas: []
+
+  # --- Security: ISO2 cert tree + OCPP CSMS bundles ---------------------------
+  EvseSecurity0:
+    module: EvseSecurity
+    config_module:
+      csms_ca_bundle: iso2/ca/csms/CSMS_CA_BUNDLE.pem
+      csms_leaf_cert_directory: iso2/client/csms
+      csms_leaf_key_directory: iso2/client/csms
+      mf_ca_bundle: iso2/ca/mf/MF_CA_BUNDLE.pem
+      mo_ca_bundle: iso2/ca/mo/MO_CA_BUNDLE.pem
+      v2g_ca_bundle: iso2/ca/v2g/V2G_CA_BUNDLE.pem
+      secc_leaf_cert_directory: iso2/client/cso
+      secc_leaf_key_directory: iso2/client/cso
+      private_key_password: '123456'
+
+  # --- Security: ISO20 cert tree (TLS 1.3, separate leaf) ---------------------
+  EvseSecurity20:
+    module: EvseSecurity
+    config_module:
+      csms_ca_bundle: iso20/ca/csms/CSMS_CA_BUNDLE.pem
+      csms_leaf_cert_directory: iso20/client/csms
+      csms_leaf_key_directory: iso20/client/csms
+      mf_ca_bundle: iso20/ca/mf/MF_CA_BUNDLE.pem
+      mo_ca_bundle: iso20/ca/mo/MO_CA_BUNDLE.pem
+      v2g_ca_bundle: iso20/ca/v2g/V2G_CA_BUNDLE.pem
+      secc_leaf_cert_directory: iso20/client/cso
+      secc_leaf_key_directory: iso20/client/cso
+      private_key_password: '123456'
+
+  # --- OCPP 2.0.1 (CSMS = CitrineOS) -----------------------------------------
+  ocpp:
+    module: OCPP201
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      auth:
+        - module_id: auth
+          implementation_id: main
+      system:
+        - module_id: system
+          implementation_id: main
+      security:
+        - module_id: EvseSecurity0
+          implementation_id: main
+      evse_energy_sink:
+        - module_id: grid_connection_point
+          implementation_id: external_limits
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: external_limits
+      reservation:
+        - module_id: auth
+          implementation_id: reservation
+    access:
+      config:
+        allow_global_read: true
+        allow_global_write: false
+        allow_set_read_only: false
+        modules:
+          auth:
+            allow_read: true
+            allow_write: true
+            allow_set_read_only: true
+
+  # --- Authentication: NFC + OCPP, dummy fallback when CSMS is offline --------
+  token_provider_1:
+    module: PN7160TokenProvider
+
+  auth:
+    module: Auth
+    config_module:
+      connection_timeout: 600
+      selection_algorithm: PlugEvents
+    connections:
+      token_provider:
+        - module_id: token_provider_1
+          implementation_id: main
+        - module_id: ocpp
+          implementation_id: auth_provider
+        - module_id: evse_manager_1
+          implementation_id: token_provider
+      token_validator:
+        # Realistic path: CSMS-driven Authorize / AuthCacheCtrlr /
+        # LocalAuthListCtrlr. Tried first.
+        - module_id: ocpp
+          implementation_id: auth_validator
+        # Offline fallback. Engaged only if OCPP validator times out or
+        # errors (e.g. CSMS unreachable). Remove for production.
+        #- module_id: token_validator_dummy
+        #  implementation_id: main
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      kvs:
+        - module_id: persistent_store
+          implementation_id: main
+
+  # Test-bench offline fallback. Declared but NOT wired by default --
+  # uncomment the `token_validator_dummy` entry in `auth.token_validator`
+  # above to engage it. Accepts any tag if OCPP is unreachable. Useful on
+  # the bench when CitrineOS is down; never enable in production.
+  token_validator_dummy:
+    module: DummyTokenValidator
+    config_implementation:
+      main:
+        validation_result: Accepted
+        validation_reason: Offline (no CSMS)
+        sleep: 0.25
+
+  persistent_store:
+    module: PersistentStore
+
+  # --- Energy management: GCP -> api_sink -> ocpp_sink -> evse ----------------
+  energy_manager:
+    module: EnergyManager
+    config_module:
+      slice_ampere: 1.0
+      slice_watt: 1000
+      schedule_total_duration: 5
+    connections:
+      energy_trunk:
+        - module_id: grid_connection_point
+          implementation_id: energy_grid
+
+  evse_manager_1_ocpp_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 1
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1
+          implementation_id: energy_grid
+
+  evse_manager_1_api_sink:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 1
+    config_module:
+      fuse_limit_A: 32.0
+      phase_count: 1
+    connections:
+      energy_consumer:
+        - module_id: evse_manager_1_ocpp_sink
+          implementation_id: energy_grid
+
+  grid_connection_point:
+    module: EnergyNode
+    mapping:
+      module:
+        evse: 0
+    config_module:
+      fuse_limit_A: 40.0
+      phase_count: 1
+    connections:
+      price_information: []
+      energy_consumer:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: energy_grid
+
+  # --- API surface ------------------------------------------------------------
+  api:
+    module: API
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+      ocpp:
+        - module_id: ocpp
+          implementation_id: ocpp_generic
+      error_history:
+        - module_id: error_history
+          implementation_id: error_history
+      evse_energy_sink:
+        - module_id: evse_manager_1_api_sink
+          implementation_id: external_limits
+
+  evse_manager_api:
+    module: evse_manager_consumer_API
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    connections:
+      evse_manager:
+        - module_id: evse_manager_1
+          implementation_id: evse
+
+  auth_api:
+    module: auth_consumer_API
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    connections:
+      auth:
+        - module_id: auth
+          implementation_id: main
+
+  ocpp_api:
+    module: ocpp_consumer_API
+    config_module:
+      cfg_communication_check_to_s: 0
+      cfg_heartbeat_interval_ms: 40000
+    connections:
+      ocpp:
+        - module_id: ocpp
+          implementation_id: ocpp_generic
+      data_transfer:
+        - module_id: ocpp
+          implementation_id: data_transfer
+
+  # --- Plumbing ---------------------------------------------------------------
+  error_history:
+    module: ErrorHistory
+    config_implementation:
+      error_history:
+        database_path: /tmp/error_history.db
+
+  system:
+    module: System
+    connections:
+      store:
+        - module_id: persistent_store
+          implementation_id: main
