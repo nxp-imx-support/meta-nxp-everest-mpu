@@ -12,6 +12,10 @@ SRC_URI:append = " \
     file://everest-core/0003-fix-Evse15118D20-Prevent-EVSE-that-supports-multi-ph.patch \
     file://everest-core/0012-IIOTSOL1-1210-Add-CSMS-connection-status-monitoring-.patch \
     file://everest-core/0013-IIOTSOL1-1249-Block-RFID-authorization-when-EV-not-c.patch \
+    file://everest-core/0014-IIOTSOL1-1589-IsoMux-enable-TLS-1.3-cipher-suites-fo.patch \
+    file://everest-core/0015-IIOTSOL1-1587-IsoMux-select-protocol-by-EV-supplied-.patch \
+    file://everest-core/0016-IIOTSOL1-1588-IsoMux-forward-AC-update_-commands-to-.patch \
+    file://everest-core/0017-IIOTSOL1-1586-IsoMux-support-multiple-TLS-cert-chain.patch \
     file://everest-core/everest.service \
     file://everest-core/everest.default \
     file://scripts/ \

@@ -1,0 +1,104 @@
+From 2d37989564ad755857ddbd32392a3e71619458f6 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Mon, 25 May 2026 17:53:11 +0200
+Subject: [PATCH] IIOTSOL1-1588: IsoMux: forward AC update_* commands to both
+ backends unconditionally
+
+IsoMux's AC update handlers (`handle_update_ac_parameters`,
+`handle_update_ac_maximum_limits`, `handle_update_ac_minimum_limits`,
+`handle_update_ac_target_values`, `handle_update_ac_present_power`)
+gate forwarding on `mod->selected_iso20()`. That flag is only set to
+true after the EV connects, sends SupportedAppProtocolReq, and IsoMux
+sees an `urn:iso:std:iso:15118:-20:*` namespace.
+
+This creates a startup deadlock for AC + ISO 15118-20 configs:
+
+  1. EvseManager calls `iso15118_charger.update_ac_*(...)` during AC
+     HLC initialization (at boot, before any EV).
+  2. IsoMux checks `selected_iso20()` -> false (no session yet).
+  3. IsoMux silently drops the call - does not forward to Evse15118D20.
+  4. Evse15118D20's `ISO15118_chargerImpl::ready()` busy-waits on
+     `setup_steps_done.all()` (line 175-181), which never completes
+     because the AC update commands never arrive.
+  5. `controller->loop()` is never reached, so libiso15118's
+     `ConnectionPlain` is never constructed - no listener on `::1:50000`.
+  6. Later, when an ISO 15118-20 EV connects, IsoMux attempts to
+     proxy the V2G payload via `connect(::1:50000)` and gets
+     `Connection refused` because step 5 never happened.
+
+The corresponding DC update handlers (`handle_update_dc_maximum_limits`,
+`handle_update_dc_minimum_limits`, `handle_update_dc_present_values`,
+`handle_update_meter_info`) all forward unconditionally to both
+backends. This is why DC + IsoMux works (upstream's
+`config-sil-dc-isomux.yaml` exercises this path in CI) but AC +
+IsoMux + Evse15118D20 has not been working: nobody has exercised the
+AC path with an ISO 15118-20 backend before.
+
+Make the five AC update handlers behave the same way as the DC ones:
+forward to both backends unconditionally. The backend modules
+themselves discard updates they cannot use; the AC update commands
+are safe to deliver to both EvseV2G (which ignores them at runtime
+if it's not the selected protocol) and Evse15118D20 (which uses them
+to satisfy `setup_steps_done`).
+
+This is consistent with the existing pattern for DC update commands
+in the same file and unblocks AC + ISO 15118-20 unified configs.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ .../IsoMux/charger/ISO15118_chargerImpl.cpp   | 25 ++++++++-----------
+ 1 file changed, 10 insertions(+), 15 deletions(-)
+
+diff --git a/modules/EVSE/IsoMux/charger/ISO15118_chargerImpl.cpp b/modules/EVSE/IsoMux/charger/ISO15118_chargerImpl.cpp
+index fa89965..68eaceb 100644
+--- a/modules/EVSE/IsoMux/charger/ISO15118_chargerImpl.cpp
++++ b/modules/EVSE/IsoMux/charger/ISO15118_chargerImpl.cpp
+@@ -617,33 +617,28 @@ void ISO15118_chargerImpl::handle_update_ac_max_current(double& max_current) {
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_ac_parameters(types::iso15118::AcParameters& ac_parameters) {
+-    if (mod->selected_iso20()) {
+-        mod->r_iso20->call_update_ac_parameters(ac_parameters);
+-    }
++    mod->r_iso20->call_update_ac_parameters(ac_parameters);
++    mod->r_iso2->call_update_ac_parameters(ac_parameters);
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_ac_maximum_limits(types::iso15118::AcEvseMaximumPower& maximum_limits) {
+-    if (mod->selected_iso20()) {
+-        mod->r_iso20->call_update_ac_maximum_limits(maximum_limits);
+-    }
++    mod->r_iso20->call_update_ac_maximum_limits(maximum_limits);
++    mod->r_iso2->call_update_ac_maximum_limits(maximum_limits);
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_ac_minimum_limits(types::iso15118::AcEvseMinimumPower& minimum_limits) {
+-    if (mod->selected_iso20()) {
+-        mod->r_iso20->call_update_ac_minimum_limits(minimum_limits);
+-    }
++    mod->r_iso20->call_update_ac_minimum_limits(minimum_limits);
++    mod->r_iso2->call_update_ac_minimum_limits(minimum_limits);
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_ac_target_values(types::iso15118::AcTargetValues& target_values) {
+-    if (mod->selected_iso20()) {
+-        mod->r_iso20->call_update_ac_target_values(target_values);
+-    }
++    mod->r_iso20->call_update_ac_target_values(target_values);
++    mod->r_iso2->call_update_ac_target_values(target_values);
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_ac_present_power(types::units::Power& present_power) {
+-    if (mod->selected_iso20()) {
+-        mod->r_iso20->call_update_ac_present_power(present_power);
+-    }
++    mod->r_iso20->call_update_ac_present_power(present_power);
++    mod->r_iso2->call_update_ac_present_power(present_power);
+ }
+ 
+ void ISO15118_chargerImpl::handle_update_dc_maximum_limits(types::iso15118::DcEvseMaximumLimits& maximum_limits) {
+-- 
+2.34.1
+

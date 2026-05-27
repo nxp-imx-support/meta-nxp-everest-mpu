@@ -1,0 +1,304 @@
+From 37719dabeef1a0d03a0faf86d6812f1beea8244a Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Tue, 26 May 2026 02:02:04 +0200
+Subject: [PATCH] IIOTSOL1-1586: IsoMux: support multiple TLS cert chains for
+ ISO 15118-2 +  ISO 15118-20 simultaneously
+
+IsoMux's TLS server loads exactly one cert chain into its SSL_CTX
+via the single `security` requirement on its module manifest. That
+one chain must satisfy whichever protocol profile the EV negotiates.
+There is no single cert that satisfies both:
+
+  * ISO 15118-2 Annex H: SECC leaf must be NIST P-256 with
+    ecdsa-with-SHA256 signature.
+  * ISO 15118-20 Annex F: SECC leaf must be NIST P-521 with
+    ecdsa-with-SHA512 signature.
+
+Deployments serving both protocols simultaneously - e.g. ISO 15118-2
+PnC (which requires TLS) alongside ISO 15118-20 EIM (which also
+requires TLS, with a different cert profile) - cannot work today.
+With a P-256 leaf wired into IsoMux, ISO 15118-20 EVs reject the
+cert during CertificateVerify (alert 51, decrypt_error); with a
+P-521 leaf wired in, ISO 15118-2 EVs do the same.
+
+OpenSSL natively supports multiple cert chains in one SSL_CTX and
+selects at ClientHello time based on the client's
+signature_algorithms extension (RFC 8446 section 4.2.3). The
+underlying tls::Server type already exposes `config.chains` as a
+vector. Only the IsoMux glue layer was assuming one cert.
+
+Add an optional second EvseSecurity requirement, `security_secondary`,
+on IsoMux. When wired, both EvseSecurity instances are queried for
+V2G leaf certs at TLS server build time, and both chains are added
+to `config.chains`. OpenSSL then handles per-handshake cert selection
+based on what the client EV advertises.
+
+Backward-compatible: existing configs that wire only `security` keep
+working unchanged. Only configs that explicitly wire `security_secondary`
+get the multi-chain behavior. The patch does not change the existing
+single-chain code path.
+
+Recommended wiring for a deployment serving both ISO 15118-2 PnC and
+ISO 15118-20 EIM:
+
+  EvseSecurity_iso2:    # iso2/ cert tree (P-256/SHA-256)
+    module: EvseSecurity
+    config_module:
+      ...
+
+  EvseSecurity_iso20:   # iso20/ cert tree (P-521/SHA-512)
+    module: EvseSecurity
+    config_module:
+      ...
+
+  IsoMux0:
+    module: IsoMux
+    connections:
+      security:
+        - module_id: EvseSecurity_iso20  # or _iso2; the order does
+          implementation_id: main         # not matter
+      security_secondary:
+        - module_id: EvseSecurity_iso2   # whichever wasn't in security
+          implementation_id: main
+
+Note: this patch does not require companion patches to the
+LeafCertificateType enum or EvseSecurity API. Each EvseSecurity
+instance keeps its existing single-cert-per-V2G-query semantics.
+The multi-chain handling is entirely on IsoMux's side, wiring two
+existing-API EvseSecurity instances.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <maroueneboubakri@nxp.com>
+---
+ modules/EVSE/IsoMux/IsoMux.cpp                |  5 +-
+ modules/EVSE/IsoMux/IsoMux.hpp                |  3 +
+ .../EVSE/IsoMux/connection/tls_connection.cpp | 94 ++++++++++++-------
+ modules/EVSE/IsoMux/manifest.yaml             |  4 +
+ modules/EVSE/IsoMux/v2g.hpp                   |  1 +
+ modules/EVSE/IsoMux/v2g_ctx.cpp               |  4 +-
+ modules/EVSE/IsoMux/v2g_ctx.hpp               |  3 +-
+ 7 files changed, 78 insertions(+), 36 deletions(-)
+
+diff --git a/modules/EVSE/IsoMux/IsoMux.cpp b/modules/EVSE/IsoMux/IsoMux.cpp
+index 71daee6..bd2b93f 100644
+--- a/modules/EVSE/IsoMux/IsoMux.cpp
++++ b/modules/EVSE/IsoMux/IsoMux.cpp
+@@ -34,7 +34,10 @@ namespace module {
+ 
+ void IsoMux::init() {
+     /* create v2g context */
+-    v2g_ctx = v2g_ctx_create(&(*r_security));
++    // Pass the optional secondary EvseSecurity if wired in the config.
++    evse_securityIntf* secondary =
++        r_security_secondary.empty() ? nullptr : r_security_secondary[0].get();
++    v2g_ctx = v2g_ctx_create(&(*r_security), secondary);
+ 
+     if (v2g_ctx == nullptr)
+         return;
+diff --git a/modules/EVSE/IsoMux/IsoMux.hpp b/modules/EVSE/IsoMux/IsoMux.hpp
+index ffb3001..22d6716 100644
+--- a/modules/EVSE/IsoMux/IsoMux.hpp
++++ b/modules/EVSE/IsoMux/IsoMux.hpp
+@@ -41,6 +41,7 @@ public:
+     IsoMux() = delete;
+     IsoMux(const ModuleInfo& info, std::unique_ptr<ISO15118_chargerImplBase> p_charger,
+            std::unique_ptr<iso15118_extensionsImplBase> p_extensions, std::unique_ptr<evse_securityIntf> r_security,
++           std::vector<std::unique_ptr<evse_securityIntf>> r_security_secondary,
+            std::unique_ptr<ISO15118_chargerIntf> r_iso2, std::unique_ptr<ISO15118_chargerIntf> r_iso20,
+            std::unique_ptr<iso15118_extensionsIntf> r_ext2, std::unique_ptr<iso15118_extensionsIntf> r_ext20,
+            Conf& config) :
+@@ -48,6 +49,7 @@ public:
+         p_charger(std::move(p_charger)),
+         p_extensions(std::move(p_extensions)),
+         r_security(std::move(r_security)),
++        r_security_secondary(std::move(r_security_secondary)),
+         r_iso2(std::move(r_iso2)),
+         r_iso20(std::move(r_iso20)),
+         r_ext2(std::move(r_ext2)),
+@@ -57,6 +59,7 @@ public:
+     const std::unique_ptr<ISO15118_chargerImplBase> p_charger;
+     const std::unique_ptr<iso15118_extensionsImplBase> p_extensions;
+     const std::unique_ptr<evse_securityIntf> r_security;
++    const std::vector<std::unique_ptr<evse_securityIntf>> r_security_secondary;
+     const std::unique_ptr<ISO15118_chargerIntf> r_iso2;
+     const std::unique_ptr<ISO15118_chargerIntf> r_iso20;
+     const std::unique_ptr<iso15118_extensionsIntf> r_ext2;
+diff --git a/modules/EVSE/IsoMux/connection/tls_connection.cpp b/modules/EVSE/IsoMux/connection/tls_connection.cpp
+index 4a44198..1cc4940 100644
+--- a/modules/EVSE/IsoMux/connection/tls_connection.cpp
++++ b/modules/EVSE/IsoMux/connection/tls_connection.cpp
+@@ -258,6 +258,54 @@ ssize_t connection_write(struct v2g_connection* conn, unsigned char* buf, std::s
+     return (result < 0) ? result : static_cast<ssize_t>(bytes_written);
+ }
+ 
++/**
++ * \brief Load a V2G leaf cert chain from one EvseSecurity instance into
++ *        the provided tls::Server::config_t. Appends one entry to
++ *        config.chains on success.
++ *
++ * Used by build_config() to populate one cert chain per wired
++ * EvseSecurity instance. OpenSSL selects from the resulting set of
++ * chains at ClientHello time based on the client EV's
++ * signature_algorithms extension.
++ *
++ * \param security The EvseSecurity interface to query. Must be non-null.
++ * \param config   The TLS server config to append the chain to.
++ * \param label    A human-readable label for log messages
++ *                 (e.g. "primary" / "secondary").
++ * \return true if a chain was successfully appended; false on any error.
++ */
++static bool load_cert_chain_from_security(evse_securityIntf* security,
++                                          tls::Server::config_t& config,
++                                          const char* label) {
++    const auto cert_info = security->call_get_leaf_certificate_info(
++        types::evse_security::LeafCertificateType::V2G,
++        types::evse_security::EncodingFormat::PEM, false);
++    if (cert_info.status != types::evse_security::GetCertificateInfoStatus::Accepted) {
++        dlog(DLOG_LEVEL_ERROR, "Failed to read cert_info (%s)! Not Accepted", label);
++        return false;
++    }
++    if (not cert_info.info) {
++        dlog(DLOG_LEVEL_ERROR, "Failed to read cert_info (%s)! Empty response", label);
++        return false;
++    }
++    const auto& info = cert_info.info.value();
++    auto& ref = config.chains.emplace_back();
++    ref.certificate_chain_file = info.certificate.value_or("").c_str();
++    ref.private_key_file = info.key.c_str();
++    ref.private_key_password = info.password.value_or("").c_str();
++
++    if (info.ocsp) {
++        for (const auto& ocsp : info.ocsp.value()) {
++            const char* file{nullptr};
++            if (ocsp.ocsp_path) {
++                file = ocsp.ocsp_path.value().c_str();
++            }
++            ref.ocsp_response_files.push_back(file);
++        }
++    }
++    return true;
++}
++
+ bool build_config(tls::Server::config_t& config, struct v2g_context* ctx) {
+     assert(ctx != nullptr);
+     assert(ctx->r_security != nullptr);
+@@ -294,39 +342,19 @@ bool build_config(tls::Server::config_t& config, struct v2g_context* ctx) {
+ 
+     config.tls_key_logging = ctx->tls_key_logging;
+ 
+-    // information from libevse-security
+-    const auto cert_info =
+-        ctx->r_security->call_get_leaf_certificate_info(LeafCertificateType::V2G, EncodingFormat::PEM, false);
+-    if (cert_info.status != GetCertificateInfoStatus::Accepted) {
+-        dlog(DLOG_LEVEL_ERROR, "Failed to read cert_info! Not Accepted");
+-    } else {
+-        if (cert_info.info) {
+-            const auto& info = cert_info.info.value();
+-            const auto cert_path = info.certificate.value_or("");
+-            const auto key_path = info.key;
+-
+-            // workaround (see above libevse-security comment)
+-            const auto key_password = info.password.value_or("");
+-
+-            auto& ref = config.chains.emplace_back();
+-            ref.certificate_chain_file = cert_path.c_str();
+-            ref.private_key_file = key_path.c_str();
+-            ref.private_key_password = key_password.c_str();
+-
+-            if (info.ocsp) {
+-                for (const auto& ocsp : info.ocsp.value()) {
+-                    const char* file{nullptr};
+-                    if (ocsp.ocsp_path) {
+-                        file = ocsp.ocsp_path.value().c_str();
+-                    }
+-                    ref.ocsp_response_files.push_back(file);
+-                }
+-            }
+-
+-            bResult = true;
+-        } else {
+-            dlog(DLOG_LEVEL_ERROR, "Failed to read cert_info! Empty response");
+-        }
++    // Load V2G leaf cert chain from the primary EvseSecurity. Existing
++    // single-EvseSecurity configs work as before.
++    bResult = load_cert_chain_from_security(ctx->r_security, config, "primary");
++
++    // If a secondary EvseSecurity is wired (typically because the
++    // deployment serves both ISO 15118-2 with one cert profile and
++    // ISO 15118-20 with another), also load its V2G leaf chain.
++    // OpenSSL will select at ClientHello time based on the EV's
++    // signature_algorithms.
++    if (ctx->r_security_secondary != nullptr) {
++        const bool secondary_ok =
++            load_cert_chain_from_security(ctx->r_security_secondary, config, "secondary");
++        bResult = bResult || secondary_ok;
+     }
+ 
+     return bResult;
+diff --git a/modules/EVSE/IsoMux/manifest.yaml b/modules/EVSE/IsoMux/manifest.yaml
+index 919f5a2..9b95abf 100644
+--- a/modules/EVSE/IsoMux/manifest.yaml
++++ b/modules/EVSE/IsoMux/manifest.yaml
+@@ -53,6 +53,10 @@ provides:
+ requires:
+   security:
+     interface: evse_security
++  security_secondary:
++    interface: evse_security
++    min_connections: 0
++    max_connections: 1
+   iso2:
+     interface: ISO15118_charger
+   iso20:
+diff --git a/modules/EVSE/IsoMux/v2g.hpp b/modules/EVSE/IsoMux/v2g.hpp
+index 69e0bf4..86b62dd 100644
+--- a/modules/EVSE/IsoMux/v2g.hpp
++++ b/modules/EVSE/IsoMux/v2g.hpp
+@@ -115,6 +115,7 @@ struct v2g_context {
+     std::atomic_bool shutdown;
+ 
+     evse_securityIntf* r_security;
++    evse_securityIntf* r_security_secondary; // optional; may be nullptr
+ 
+     struct event* com_setup_timeout;
+ 
+diff --git a/modules/EVSE/IsoMux/v2g_ctx.cpp b/modules/EVSE/IsoMux/v2g_ctx.cpp
+index 02711c6..5352f75 100644
+--- a/modules/EVSE/IsoMux/v2g_ctx.cpp
++++ b/modules/EVSE/IsoMux/v2g_ctx.cpp
+@@ -14,7 +14,8 @@
+ 
+ #include <cbv2g/iso_2/iso2_msgDefDatatypes.h>
+ 
+-struct v2g_context* v2g_ctx_create(evse_securityIntf* r_security) {
++struct v2g_context* v2g_ctx_create(evse_securityIntf* r_security,
++                                   evse_securityIntf* r_security_secondary) {
+     struct v2g_context* ctx;
+ 
+     // TODO There are c++ objects within v2g_context and calloc doesn't call initialisers.
+@@ -24,6 +25,7 @@ struct v2g_context* v2g_ctx_create(evse_securityIntf* r_security) {
+         return NULL;
+ 
+     ctx->r_security = r_security;
++    ctx->r_security_secondary = r_security_secondary;
+     ctx->tls_security = TLS_SECURITY_PROHIBIT; // default
+ 
+     ctx->local_tcp_addr = NULL;
+diff --git a/modules/EVSE/IsoMux/v2g_ctx.hpp b/modules/EVSE/IsoMux/v2g_ctx.hpp
+index 1fac4d6..90af51e 100644
+--- a/modules/EVSE/IsoMux/v2g_ctx.hpp
++++ b/modules/EVSE/IsoMux/v2g_ctx.hpp
+@@ -13,7 +13,8 @@
+ #define PHY_VALUE_VALUE_MIN SHRT_MIN
+ #define PHY_VALUE_VALUE_MAX SHRT_MAX
+ 
+-struct v2g_context* v2g_ctx_create(evse_securityIntf* r_security);
++struct v2g_context* v2g_ctx_create(evse_securityIntf* r_security,
++                                   evse_securityIntf* r_security_secondary);
+ 
+ /*!
+  * \brief v2g_ctx_free
+-- 
+2.34.1
+

@@ -1,0 +1,105 @@
+From 99c7364f1629441e6b2fe9261141076e5ebb4f35 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Mon, 25 May 2026 17:47:54 +0200
+Subject: [PATCH] IIOTSOL1-1587: IsoMux: select protocol by EV-supplied
+ priority
+
+IsoMux's app-handshake parser returns "iso20 = true" on the first
+ISO 15118-20 namespace it encounters in the EV's SupportedAppProtocolReq
+array, regardless of:
+
+  1. The Priority field the EV attached to each entry (ISO 15118-2
+     [V2G2-018] and ISO 15118-20 require the SECC to select the
+     entry with the lowest Priority value from those it supports -
+     lower value = more preferred).
+
+  2. The presence of other entries (e.g. ISO 15118-2 or DIN 70121)
+     that the EV may have ranked above its first ISO 15118-20 entry.
+
+Concrete failure: an AC EV that advertises
+  [iso-2 @ Priority 1, iso-20:DC @ Priority 5]
+expects the EVSE to pick ISO 15118-2 (its preferred entry, and the
+only mutually-supported option since the EVSE is AC-only and cannot
+serve :-20:DC). IsoMux instead routes the proxy connection to the
+ISO 15118-20 backend, libiso15118 commits to the :-20:DC namespace,
+and the EV closes the session right after AuthorizationSetupRes
+because there is no AC/DC match.
+
+Replace the first-match-wins loop with a full scan that:
+
+  - Recognises ISO 15118-20 (any `urn:iso:std:iso:15118:-20:*`
+    variant), ISO 15118-2 (2013 and 2010 MsgDef namespaces), and
+    DIN 70121 (`urn:din:70121:2012:MsgDef`).
+  - Tracks the entry with the lowest Priority value across the full
+    list.
+  - Sets the iso20 out-parameter based on which family that entry
+    belongs to.
+
+DIN 70121 and ISO 15118-2 both route to the iso2 backend (EvseV2G),
+so they are treated as a single iso2-family for selection purposes.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ modules/EVSE/IsoMux/v2g_server.cpp | 25 ++++++++++++++++++++-----
+ 1 file changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/modules/EVSE/IsoMux/v2g_server.cpp b/modules/EVSE/IsoMux/v2g_server.cpp
+index e38a05d..2e92df7 100644
+--- a/modules/EVSE/IsoMux/v2g_server.cpp
++++ b/modules/EVSE/IsoMux/v2g_server.cpp
+@@ -5,6 +5,7 @@
+ 
+ #include <cstdint>
+ #include <cstdlib>
++#include <climits>
+ #include <inttypes.h>
+ #include <string.h>
+ #include <unistd.h>
+@@ -115,6 +116,15 @@ static bool v2g_sniff_apphandshake(struct v2g_connection* conn, bool& iso20) {
+                       // (e.g. after an unexpected message)
+     }
+ 
++    /*
++     * Per ISO 15118-2 [V2G2-018] / ISO 15118-20: the SECC shall select
++     * the entry with the lowest Priority value among those it supports.
++     * IsoMux's backends collectively cover ISO 15118-2 + DIN 70121
++     * (via the iso2 backend) and ISO 15118-20 (via the iso20 backend).
++     */
++    int best_priority = INT_MAX;
++    bool best_is_iso20 = false;
++
+     for (i = 0; i < conn->handshake_req.supportedAppProtocolReq.AppProtocol.arrayLen; i++) {
+         struct appHand_AppProtocolType* app_proto = &conn->handshake_req.supportedAppProtocolReq.AppProtocol.array[i];
+         char* proto_ns = strndup(static_cast<const char*>(app_proto->ProtocolNamespace.characters),
+@@ -130,16 +140,21 @@ static bool v2g_sniff_apphandshake(struct v2g_connection* conn, bool& iso20) {
+              proto_ns, app_proto->VersionNumberMajor, app_proto->VersionNumberMinor, app_proto->SchemaID,
+              app_proto->Priority);
+ 
+-        // Check if it supports ISO-20
+         const char* iso20_urn = "urn:iso:std:iso:15118:-20";
+-        if (strncmp(iso20_urn, proto_ns, strlen(iso20_urn)) == 0) {
+-            iso20 = true;
+-            free(proto_ns);
+-            return true;
++        const bool is_iso20 = (strncmp(iso20_urn, proto_ns, strlen(iso20_urn)) == 0);
++        const bool is_iso2 = (strcmp(proto_ns, ISO_15118_2013_MSG_DEF) == 0 ||
++                              strcmp(proto_ns, ISO_15118_2010_MSG_DEF) == 0 ||
++                              strcmp(proto_ns, DIN_70121_MSG_DEF) == 0);
++
++        if ((is_iso20 || is_iso2) && app_proto->Priority < best_priority) {
++            best_priority = app_proto->Priority;
++            best_is_iso20 = is_iso20;
+         }
+ 
+         free(proto_ns);
+     }
++
++    iso20 = best_is_iso20;
+     return true;
+ }
+ 
+-- 
+2.34.1
+

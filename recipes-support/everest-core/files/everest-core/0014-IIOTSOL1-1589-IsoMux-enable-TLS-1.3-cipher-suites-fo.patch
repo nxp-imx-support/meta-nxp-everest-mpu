@@ -1,0 +1,68 @@
+From f7cd8efaf29874ea4a9651ce7a9c26dc2a01b922 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Mon, 25 May 2026 17:38:15 +0200
+Subject: [PATCH] IIOTSOL1-1589: IsoMux: enable TLS 1.3 cipher suites for ISO
+ 15118-20
+
+IsoMux's TLS server unconditionally disables TLS 1.3 via an empty
+`ciphersuites` string and pins the legacy TLS 1.2 suite mandated by
+ISO 15118-2 (`ECDHE-ECDSA-AES128-SHA256`). The comment in build_config
+states `// disable TLS 1.3` explicitly.
+
+This breaks ISO 15118-20 entirely. The standard mandates TLS 1.3
+(Annex B) and the EV's TLS stack typically advertises only TLS 1.3 in
+its `supported_versions` extension. Two failure modes are observed:
+
+  1. Strict EVs reject IsoMux's ServerHello immediately because no
+     TLS 1.3 was offered.
+
+  2. Permissive EVs negotiate TLS 1.2 with the ISO 15118-2 cipher,
+     then fail signature verification on CertificateVerify with
+     `decrypt_error` (alert 51), because the cipher implies ISO
+     15118-2 profile but the V2G leaf cert provided by EvseSecurity
+     may be P-521/SHA-512 (per ISO 15118-20 cert profile).
+
+ISO 15118-20 standalone (Evse15118D20 without IsoMux) is unaffected,
+since that module uses a different TLS stack (libiso15118) which is
+correctly configured for TLS 1.3. The bug is specific to IsoMux's
+TLS termination, which reuses the OpenSSL wrapper from EvseV2G.
+
+Enable the two TLS 1.3 cipher suites mandated by ISO 15118-20 Annex B
+(`TLS_AES_128_GCM_SHA256` and `TLS_CHACHA20_POLY1305_SHA256`) alongside
+the existing TLS 1.2 cipher. Existing ISO 15118-2 deployments continue
+to negotiate TLS 1.2 (clients pick the offered TLS 1.2 cipher);
+ISO 15118-20 deployments can now negotiate TLS 1.3.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ modules/EVSE/IsoMux/connection/tls_connection.cpp | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/modules/EVSE/IsoMux/connection/tls_connection.cpp b/modules/EVSE/IsoMux/connection/tls_connection.cpp
+index 86ac8b5..4a44198 100644
+--- a/modules/EVSE/IsoMux/connection/tls_connection.cpp
++++ b/modules/EVSE/IsoMux/connection/tls_connection.cpp
+@@ -275,9 +275,16 @@ bool build_config(tls::Server::config_t& config, struct v2g_context* ctx) {
+ 
+     bool bResult{false};
+ 
++    // TLS 1.2 cipher list mandated by ISO 15118-2 (Annex H) and
++    // TLS 1.3 ciphersuites mandated by ISO 15118-20 (Annex B). Both
++    // protocol families terminate TLS here; the EV's ClientHello
++    // selects which version is negotiated.
+     config.cipher_list = "ECDHE-ECDSA-AES128-SHA256";
+-    config.ciphersuites = "";     // disable TLS 1.3
+-    config.verify_client = false; // contract certificate managed in-band in 15118-2
++    config.ciphersuites = "TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256";
++
++    // ISO 15118-2 manages contract certificates in-band, not via TLS
++    // client auth. ISO 15118-20 also does not use TLS client auth.
++    config.verify_client = false;
+ 
+     // use the existing configured socket
+     // TODO(james-ctc): switch to server socket init code otherwise there
+-- 
+2.34.1
+
