@@ -1,0 +1,113 @@
+From 9251f81ca1b945c6b97d9be8b23b5f44a0163468 Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Wed, 27 May 2026 18:05:00 +0200
+Subject: [PATCH] IIOTSOL1-1607: Enable ISO 15118-2 PnC over IsoMux loopback
+ proxy
+
+Let ISO 15118-2 Plug & Charge work when EvseV2G is fronted by IsoMux
+on the same host (IsoMux terminates EV TLS on the external interface,
+proxies plain TCP to EvseV2G on loopback).
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ .../EVSE/EvseV2G/connection/connection.cpp    | 32 +++++++++++++++++++
+ modules/EVSE/EvseV2G/iso_server.cpp           |  7 +++-
+ modules/EVSE/EvseV2G/v2g.hpp                  |  5 +++
+ 3 files changed, 43 insertions(+), 1 deletion(-)
+
+diff --git a/modules/EVSE/EvseV2G/connection/connection.cpp b/modules/EVSE/EvseV2G/connection/connection.cpp
+index e7aa457..48ef13e 100644
+--- a/modules/EVSE/EvseV2G/connection/connection.cpp
++++ b/modules/EVSE/EvseV2G/connection/connection.cpp
+@@ -9,6 +9,7 @@
+ #include "v2g_server.hpp"
+ 
+ #include <generated/types/evse_manager.hpp>
++#include <everest/tls/openssl_util.hpp>
+ 
+ #include <arpa/inet.h>
+ #include <cstring>
+@@ -470,6 +471,17 @@ static void* connection_handle_tcp(void* data) {
+ 
+     dlog(DLOG_LEVEL_INFO, "Started new TCP connection thread");
+ 
++    /* Storage for the contract certificate's public key, extracted from the
++     * PaymentDetailsReq EXI payload by handle_iso_payment_details and reused
++     * by handle_iso_authorization to verify the EV's V2G2 signature on
++     * AuthorizationReq. The TLS thread sets this up identically; without it
++     * here, the plain TCP path crashes on assert(conn->pubkey != nullptr) at
++     * iso_server.cpp:1005 when a proxied EV selects Contract for PnC.
++     * Lifetime matches this thread = lifetime of the V2G
++     * connection. */
++    openssl::pkey_ptr contract_public_key{nullptr, nullptr};
++    conn->pubkey = &contract_public_key;
++
+     remove_service_from_service_list_if_exists(conn->ctx, V2G_SERVICE_ID_CERTIFICATE);
+ 
+     /* check if the v2g-session is already running in another thread, if not, handle v2g-connection */
+@@ -569,6 +581,26 @@ static void* connection_server(void* data) {
+                  strerror(errno));
+         }
+ 
++        /* If the peer is a loopback address, this connection comes from a
++         * same-host TLS-terminating proxy (IsoMux). Mark the connection
++         * as proxied-TLS-active so the PnC gate in iso_server.cpp treats the
++         * EV-to-EVSE channel as TLS-protected end-to-end. The TLS hop is
++         * terminated upstream at the proxy; this plain-TCP loopback hop is
++         * trusted by virtue of being same-host. */
++        {
++            const bool is_loopback_v6 = IN6_IS_ADDR_LOOPBACK(&addr.sin6_addr);
++            const bool is_loopback_v4_mapped =
++                IN6_IS_ADDR_V4MAPPED(&addr.sin6_addr) &&
++                (addr.sin6_addr.s6_addr[12] == 127);
++            if (is_loopback_v6 || is_loopback_v4_mapped) {
++                conn->is_proxied_tls = true;
++                dlog(DLOG_LEVEL_INFO,
++                     "Plain TCP connection from loopback peer: accepting as "
++                     "proxied-TLS-active (upstream TLS assumed terminated by "
++                     "same-host proxy)");
++            }
++        }
++
+         // store the port to create a udp socket
+         conn->ctx->udp_port = ntohs(addr.sin6_port);
+ 
+diff --git a/modules/EVSE/EvseV2G/iso_server.cpp b/modules/EVSE/EvseV2G/iso_server.cpp
+index aed721d..c79a1b2 100644
+--- a/modules/EVSE/EvseV2G/iso_server.cpp
++++ b/modules/EVSE/EvseV2G/iso_server.cpp
+@@ -642,7 +642,12 @@ static enum v2g_event handle_iso_service_discovery(struct v2g_connection* conn)
+         std::find(conn->ctx->evse_v2g_data.payment_option_list.begin(),
+                   conn->ctx->evse_v2g_data.payment_option_list.end(),
+                   iso2_paymentOptionType_Contract) != conn->ctx->evse_v2g_data.payment_option_list.end();
+-    if (not conn->is_tls_connection and pnc_enabled) {
++    // The EV-to-EVSE channel is TLS-protected when either this connection is
++    // TLS itself, or it arrived on a plain socket from a loopback peer that
++    // terminated TLS upstream (a same-host proxy; see
++    // v2g_connection::is_proxied_tls).
++    const bool tls_effective = conn->is_tls_connection || conn->is_proxied_tls;
++    if (not tls_effective and pnc_enabled) {
+         conn->ctx->evse_v2g_data.payment_option_list = {iso2_paymentOptionType_ExternalPayment};
+         dlog(DLOG_LEVEL_WARNING,
+              "PnC is not allowed without TLS-communication. Correcting value to '1' (ExternalPayment)");
+diff --git a/modules/EVSE/EvseV2G/v2g.hpp b/modules/EVSE/EvseV2G/v2g.hpp
+index 8149f7e..f5eb7d6 100644
+--- a/modules/EVSE/EvseV2G/v2g.hpp
++++ b/modules/EVSE/EvseV2G/v2g.hpp
+@@ -381,6 +381,11 @@ struct v2g_connection {
+     struct v2g_context* ctx;
+ 
+     bool is_tls_connection;
++    // True when this connection arrived on the plain TCP listener from a
++    // loopback peer (i.e. a same-host TLS-terminating proxy such as IsoMux).
++    // Read by the PnC gate in iso_server.cpp to treat the EV-to-EVSE channel
++    // as TLS-protected end-to-end even though this hop is plaintext.
++    bool is_proxied_tls = false;
+     bool tls_handshake_failed;               /* true when accept() never returned success */
+     V2gMsgTypeId last_v2g_msg_at_disconnect; /* last V2G message before connection teardown */
+ 
+-- 
+2.34.1
+

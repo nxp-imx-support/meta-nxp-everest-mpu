@@ -16,6 +16,7 @@ SRC_URI:append = " \
     file://everest-core/0015-IIOTSOL1-1587-IsoMux-select-protocol-by-EV-supplied-.patch \
     file://everest-core/0016-IIOTSOL1-1588-IsoMux-forward-AC-update_-commands-to-.patch \
     file://everest-core/0017-IIOTSOL1-1586-IsoMux-support-multiple-TLS-cert-chain.patch \
+    file://everest-core/0018-IIOTSOL1-1607-Enable-ISO-15118-2-PnC-over-IsoMux-loo.patch \
     file://everest-core/everest.service \
     file://everest-core/everest.default \
     file://scripts/ \
