@@ -3,6 +3,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI:append = " \
     file://0001-CMakeLists.txt-Disable-SE05X-RNG-usage-due-to-known-.patch \
     file://0002-provider-Disable-SE050-ECDH-key-exchange-and-enforce.patch \
+    file://0003-Serialise-SE05x-access-across-processe.patch \
 "
 
 # Ensure symlink for OpenSSL provider resolution

@@ -1,0 +1,287 @@
+From 97c0a9248d87e746968d665948244063425fb5ec Mon Sep 17 00:00:00 2001
+From: Marouene Boubakri <marouene.boubakri@nxp.com>
+Date: Fri, 29 May 2026 23:50:14 +0200
+Subject: [PATCH] IIOTSOL1-1626: Serialise SE05x access across processes with
+ flock
+
+EVerest runs each module as a separate process. With multiple modules
+loading nxp_prov (EvseSecurity, EvseV2G, IsoMux), each process has
+its own libsssProvider.so mapping, its own gProvider_boot_ctx, and
+opens its own SSS session against /dev/i2c-0. Concurrent T=1
+transactions from different processes interleave on the bus and
+surface as phNxpEseProto7816_CheckCRC failures and SM_I2CConnect
+status 7002 at OSSL_provider_init.
+
+Userspace mutexes don't cross PID boundaries. Use flock() on a shared
+lock file so all processes serialise on the same kernel-managed
+advisory lock for the duration of each SSS transaction.
+
+Upstream-Status: Pending
+
+Signed-off-by: Marouene Boubakri <marouene.boubakri@nxp.com>
+---
+ provider/sssProvider_ecdsa.c | 25 ++++++++++++++++-
+ provider/sssProvider_main.c  | 53 ++++++++++++++++++++++++++++++++++++
+ provider/sssProvider_main.h  |  4 +++
+ provider/sssProvider_store.c |  5 ++++
+ 4 files changed, 86 insertions(+), 1 deletion(-)
+
+diff --git a/provider/sssProvider_ecdsa.c b/provider/sssProvider_ecdsa.c
+index 68f9a70..c7652ed 100644
+--- a/provider/sssProvider_ecdsa.c
++++ b/provider/sssProvider_ecdsa.c
+@@ -146,6 +146,9 @@ static int sss_ecdsa_signature_sign(
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     (void)(sigsize);
+ 
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx != NULL);
+@@ -262,6 +265,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+@@ -385,6 +389,9 @@ static int sss_ecdsa_signature_digest_sign_final(void *ctx, unsigned char *sig,
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     (void)(sigsize);
+ 
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx != NULL);
+@@ -501,6 +508,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+@@ -523,6 +531,9 @@ static int sss_ecdsa_signature_digest_sign(
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     (void)(sigsize);
+ 
+     ENSURE_OR_GO_CLEANUP(data != NULL);
+@@ -694,6 +705,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+@@ -711,6 +723,9 @@ static int sss_ecdsa_signature_verify(
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx->pStoreObjCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(sig != NULL);
+@@ -797,6 +812,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+@@ -813,6 +829,9 @@ static int sss_ecdsa_signature_digest_verify_final(void *ctx, const unsigned cha
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx->pStoreObjCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(sig != NULL);
+@@ -907,6 +926,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+@@ -928,6 +948,9 @@ static int sss_ecdsa_signature_digest_verify(
+ 
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        return 0;
++
+     ENSURE_OR_GO_CLEANUP(data != NULL);
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(pEcdsaCtx->pStoreObjCtx != NULL);
+@@ -1079,7 +1102,7 @@ cleanup:
+     if (evpCtx != NULL) {
+         EVP_PKEY_CTX_free(evpCtx);
+     }
+-
++    sssProv_xprocess_unlock();
+     return ret;
+ }
+ 
+diff --git a/provider/sssProvider_main.c b/provider/sssProvider_main.c
+index 0e41501..6403b1c 100644
+--- a/provider/sssProvider_main.c
++++ b/provider/sssProvider_main.c
+@@ -35,6 +35,11 @@
+ #include "ex_sss_ports.h"
+ #include "sssProvider_main.h"
+ #include <string.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <sys/file.h>
++#include <sys/stat.h>
++#include <unistd.h>
+ 
+ /* ********************** Constants ************************** */
+ #define SSS_PROVIDER_NAME "NXP Provider"
+@@ -51,6 +56,43 @@ static int SSSPROV_LogControl = (LOG_ERR_ON | LOG_FLOW_ON); // Only Errors and f
+ // SE boot context
+ ex_sss_boot_ctx_t gProvider_boot_ctx;
+ 
++/*
++ * Cross-process lock for SSS access.
++ *
++ * EVerest runs each module in its own process. A userspace mutex
++ * inside this .so does not serialise the SE bus across processes.
++ * flock() on a shared file does.
++ *
++ * The fd is opened once per process on first use and kept until
++ * process exit. flock() locks are released automatically when the
++ * fd is closed by the kernel on exit, so no explicit cleanup is
++ * needed in error paths.
++ */
++#define SSS_LOCK_PATH "/var/lock/se050.lock"
++static int g_sss_lock_fd = -1;
++
++int sssProv_xprocess_lock(void)
++{
++    if (g_sss_lock_fd < 0) {
++        g_sss_lock_fd = open(SSS_LOCK_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0660);
++        if (g_sss_lock_fd < 0) {
++            sssProv_Print(LOG_ERR_ON, "open(%s) failed: errno=%d\n", SSS_LOCK_PATH, errno);
++            return -1;
++        }
++    }
++    if (flock(g_sss_lock_fd, LOCK_EX) != 0) {
++        sssProv_Print(LOG_ERR_ON, "flock LOCK_EX failed: errno=%d\n", errno);
++        return -1;
++    }
++    return 0;
++}
++
++void sssProv_xprocess_unlock(void)
++{
++    if (g_sss_lock_fd >= 0)
++        (void)flock(g_sss_lock_fd, LOCK_UN);
++}
++
+ /* ********************** Private funtions ******************* */
+ 
+ static const OSSL_PARAM *sss_gettable_params(void *provctx)
+@@ -191,7 +233,9 @@ static const OSSL_ALGORITHM *sss_query_operation(void *provctx, int operation_id
+ static void sss_teardown(void *provctx)
+ {
+     sssProv_Print(LOG_DBG_ON, "Enter - %s \n", __FUNCTION__);
++    (void)sssProv_xprocess_lock();
+     ex_sss_session_close(&gProvider_boot_ctx);
++    sssProv_xprocess_unlock();
+     if (provctx != NULL) {
+         OPENSSL_free(provctx);
+     }
+@@ -225,6 +269,12 @@ OPENSSL_EXPORT int OSSL_provider_init(
+ 
+     (void)(in);
+ 
++    if (sssProv_xprocess_lock() != 0) {
++        sssProv_Print(LOG_ERR_ON, "Cannot acquire SE cross-process lock\n");
++        OPENSSL_free(sssProvCtx);
++        return 0;
++    }
++
+     status = ex_sss_boot_connectstring(0, NULL, &portName);
+     ENSURE_OR_GO_CLEANUP(kStatus_SSS_Success == status)
+ 
+@@ -253,6 +303,8 @@ OPENSSL_EXPORT int OSSL_provider_init(
+     }
+ #endif
+ 
++    sssProv_xprocess_unlock();
++
+     sssProvCtx->core              = handle;
+     sssProvCtx->p_ex_sss_boot_ctx = &gProvider_boot_ctx;
+     *out                          = sss_dispatch_table;
+@@ -260,6 +312,7 @@ OPENSSL_EXPORT int OSSL_provider_init(
+ 
+     return 1;
+ cleanup:
++    sssProv_xprocess_unlock();
+     if (sssProvCtx != NULL) {
+         OPENSSL_free(sssProvCtx);
+     }
+diff --git a/provider/sssProvider_main.h b/provider/sssProvider_main.h
+index d6b74bf..f6c67d3 100644
+--- a/provider/sssProvider_main.h
++++ b/provider/sssProvider_main.h
+@@ -181,6 +181,10 @@ OPENSSL_EXPORT int sssProvider_init(
+ 
+ void sssProv_Print(int flag, const char *format, ...);
+ 
++/* Cross-process advisory lock around SSS access. */
++int  sssProv_xprocess_lock(void);
++void sssProv_xprocess_unlock(void);
++
+ int SSS_CMP_STR(const char *s1, const char *s2);
+ 
+ #endif /* SSS_PROVIDER_H */
+\ No newline at end of file
+diff --git a/provider/sssProvider_store.c b/provider/sssProvider_store.c
+index 2e859cb..68a246d 100644
+--- a/provider/sssProvider_store.c
++++ b/provider/sssProvider_store.c
+@@ -194,10 +194,14 @@ static int sss_store_object_load(
+     ENSURE_OR_GO_CLEANUP(pStoreCtx->pProvCtx != NULL);
+     ENSURE_OR_GO_CLEANUP(pStoreCtx->pProvCtx->p_ex_sss_boot_ctx != NULL);
+ 
++    if (sssProv_xprocess_lock() != 0)
++        goto cleanup;
++
+     status = sss_key_object_init(&(pStoreCtx->object), &pStoreCtx->pProvCtx->p_ex_sss_boot_ctx->ks);
+     ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
+ 
+     status = sss_key_object_get_handle(&(pStoreCtx->object), pStoreCtx->keyid);
++    sssProv_xprocess_unlock();
+     ENSURE_OR_GO_CLEANUP(status == kStatus_SSS_Success);
+ 
+     if (pStoreCtx->object.cipherType == kSSS_CipherType_EC_NIST_P ||
+@@ -220,6 +224,7 @@ static int sss_store_object_load(
+ 
+     return object_cb(params, object_cbarg);
+ cleanup:
++    sssProv_xprocess_unlock();
+     return 0;
+ }
+ 
+-- 
+2.34.1
+
