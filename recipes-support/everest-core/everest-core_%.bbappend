@@ -39,7 +39,7 @@ EXTRA_OECMAKE:append = " \
 # Default demo config: change DEMO_CONFIG to repoint /etc/everest/config.yaml
 # at build time. At runtime the operator can also override via
 # /etc/default/everest (EVEREST_CONFIG=...).
-DEMO_CONFIG ?= "config-nxp-easyevse-demo.yaml"
+DEMO_CONFIG ?= "config-nxp-easyevse-demo-no-ocpp.yaml"
 
 # --- systemd integration --------------------------------------------------
 # The upstream everest-core base recipe does not install the unit. The
