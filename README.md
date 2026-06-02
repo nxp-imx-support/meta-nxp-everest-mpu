@@ -1,9 +1,10 @@
+
 i.MX EasyEVSE EVerest MPU Meta Layer
 ====================================
 
 This repository holds the needed additional configuration to prepare and build the i.MX Linux BSP for the EVSE part of the EasyEVSE on EVerest demo.
 
-The NXP EasyEVSE EV Charging Station Development Platform on EVerest, rev. 1.0, is an Early Access Release.
+The NXP EasyEVSE EV Charging Station Development Platform on EVerest, rev. 2.0.
 It is a combined solution, using i.MX93 running Linux for the EVSE, and i.MXRT106x running FreeRTOS for the EV.
 
 
@@ -16,16 +17,16 @@ The following instructions are abbreviated. Please consult the
 * Default Build
 
     ```sh
-    repo init -u https://github.com/nxp-imx-support/nxp-easyevse-mpu-manifest -b release/everest-mpu-1.0 -m imx-6.12.20-2.0.0_everest.xml
+    repo init -u https://github.com/nxp-imx-support/nxp-easyevse-mpu-manifest -b release/everest-mpu-2.0 -m imx-6.12.20-2.0.0_everest.xml
     repo sync
     ```
 
-* Download the Plug & Trust Middleware (04.05.00)
+* Download the Plug & Trust Middleware (04.07.01)
 
     * Login to NXP.com and download the
-      [EdgeLock SE05x Plug & Trust Middleware 04.05.00](https://www.nxp.com/webapp/sps/download/license.jsp?colCode=SE05x-PLUG-TRUST-MW-v04-05-00&appType=file1&DOWNLOAD_ID=null)
+      [EdgeLock SE05x Plug & Trust Middleware 04.07.01](https://www.nxp.com/webapp/Download?colCode=SE05x-PLUG-TRUST-MW&appType=license)
 
-    * Copy the downloaded `se05x_mw_v04.05.00.zip` file to the directory
+    * Copy the downloaded `se05x_mw_v04.07.01.zip` file to the directory
       where you ran `repo sync` above.
 
 * Download the Lumissil CG5317 Firmware and Tools package (04.05.000)
@@ -74,21 +75,20 @@ Consult the [NXP EasyEVSE EV Charging Station Development Platform for MCU User 
 Using the SE050
 ---------------
 
-The Secure Element SE050 is used for secure storage and usage of certificates for TLS authentication during ISO15118 charging sessions.
-Current version of EasyEVSE on EVerest supports ISO 15118-2 EIM (External Identification Means) Charging with TLS 1.2.
-The product provides a set of development keys and certificates which are used for demonstrating this functionality.
-They are installed on the Linux image at build time for the EVSE, as well as in the EV FreeRTOS application, and are used
-during TLS authentication process.
+The SE050 secure element can back TLS 1.2/1.3 for ISO 15118 charging sessions. When provisioned, the long-term private keys used for TLS authentication — both to the CSMS and during the EVSE-to-EV session — are generated inside the SE050 and stored there permanently, and the cryptographic operations using these keys are offloaded to the secure element rather than running on the application processor.
 
-For the ISO15118-2 EIM with TLS demo, the EVSE certificates need to be copied in the SE050 once, before they are used the first time.
-This can be done running the command:
+The corresponding certificates are provided as pregenerated hierarchies for both ISO 15118-2 and ISO 15118-20 and reside on the filesystem. They are installed on the EVSE Linux image at build time, as well as in the EV FreeRTOS application, and are used during the TLS authentication process.
+
+Provisioning the keys into the SE050 is **optional**. The image already ships with the full PKI (certificate hierarchies and keys) on the filesystem, so the TLS-enabled and Plug & Charge configs run out of the box using the software (filesystem) key path — no SE050 step required.
+
+Run the helper script only if you want the long-term private keys backed by the secure element (generated and stored inside the SE050, with crypto offloaded to hardware) instead of the filesystem:
 
 ```sh
 cd /etc/everest
 ./gen_pki.sh -s
 ```
 
-_Note:_ For more details, see [README.md](https://github.com/nxp-imx-support/everest-dev-keys/blob/master/README.md).
+_Note:_ ISO 15118 TLS and PnC validate certificate validity windows, so set the EVSE and EV clocks correctly before the first handshake. For more details on the security architecture and tools, see [README.md](https://github.com/nxp-imx-support/everest-dev-keys/blob/master/README.md).
 
 Wi-Fi Configuration
 -------------------
@@ -138,14 +138,27 @@ Connection to an AP uses the `mlan0` interfaces. Wi-Fi Direct uses the
         ```
 
 
-Set up a CSMS server for the Demos
-----------------------------------
+Set up a CSMS server for the Demos (optional)
+---------------------------------------------
 
-NXP EasyEVSE on EVerest is intended to be used with a Charging Station Management System (CSMS).
+A CSMS is **optional**. The default config (`config-nxp-easyevse-demo-no-ocpp.yaml`) runs charging sessions fully standalone with no backend. A CSMS is only needed for OCPP 2.0.1 operation and for ISO 15118-2 Plug & Charge.
 
-To set up a CSMS, install and configure a CitrineOS OCPP server, install CitrineOS Operator UI,
-add a ChargePoint (EVSE) and NFC UIDs for authentication, consult the [Charging Station Management
-System (CSMS) Installation and Configuration User Guide](https://www.nxp.com/doc/UG10362).
+To run the OCPP demos, set up a CitrineOS CSMS and register the charge point:
+
+* On the CSMS side — install and configure the CitrineOS OCPP server and Operator UI, then create a charging station, add an EVSE and connector, and add the NFC/RFID UIDs for authentication. See the [Charging Station Management System (CSMS) Installation and Configuration User Guide](https://www.nxp.com/doc/UG10362).
+
+* On the EVSE side — point EVerest at the CSMS with the helper script (avoid editing `InternalCtrlr.json` / `SecurityCtrlr.json` by hand), then restart EVerest:
+
+    ```sh
+    /etc/everest/scripts/ocpp201-sp-config.sh {CSMS_HOST_IP} {your_charger_name} sp1
+    systemctl restart everest
+    ```
+
+    `sp1` selects Security Profile 1 (basic HTTP authentication). `{your_charger_name}` is the Charging Station Id registered in CitrineOS (for example `cp001`).
+
+_Note (RFID token type):_ when adding an authorization in CitrineOS, the token **Type must be set to `Local`**, not `ISO14443`. The upstream PN7160 NFC provider reports all RFID cards as `Local`; if the type does not match, authorization silently fails even with the correct UID. This applies to entries pushed via `sendLocalList` as well.
+
+For the full charge-point registration flow, the `sendLocalList` call, PnC prerequisites, and clearing failed transactions, see section 8 of UG10357.
 
 
 EVerest EVSE UI Application
@@ -153,88 +166,148 @@ EVerest EVSE UI Application
 
 NXP EasyEVSE on EVerest features a modern EVSE user interface built with NXP's GuiGuider and LVGL framework, designed for EVerest-based charging stations.
 
-* Weston Panel Modifier Script
-```bash
-# Remove panel (default behavior)
-/etc/everest/scripts/modify_panel.sh
-```
+The GUI is an LVGL application running full-screen under Wayland. It does not control charging directly; it is a *view* onto the EVerest charging stack, which it follows by subscribing to EVerest's MQTT topics. Every value on screen reflects the last state reported by EVerest, the powermeter (SigBoard), the NFC reader, and the CSMS.
 
-The GUI application is installed by the Yocto build in `/usr/bin/` and is recommended to be started in the background:
-
-```sh
-/usr/bin/gui_guider &
-```
+The GUI application is installed by the Yocto build and **starts automatically at boot** on the LVDS display; no manual launch or panel configuration is required (see [Startup](#startup)).
 
 
 Run the Demos
 -------------
 
-* Basic charging
+### Startup
 
-    ```sh
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb.yaml
-    ```
+On power-up the demo comes up automatically, in this order. All three are started by systemd; no manual steps are required:
 
-* Basic charging with NFC
+* **CG5317 PLC firmware** — loaded first by the `cg5317-firmware-load.service` systemd oneshot, since ISO 15118 communication runs over the HomePlug Green PHY. It is ordered before `everest.service`, so EVerest does not start until the PHY is up. The manual `host_loading_service` step required by earlier releases is **no longer needed** for any ISO 15118 configuration.
+* **EVerest** — `everest.service` starts the charging stack with the configured scenario.
+* **GUI** — the LVGL HMI launches on the touchscreen, showing live session data.
 
-    ```sh
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc.yaml
-    ```
+Start-up takes a few seconds. Wait for the GUI to reach the idle screen before starting a session.
 
-* ISO 15118-2 EIM charging
+### EVerest Configuration
 
-    ```sh
-    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
-        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
-        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+EVerest now runs as a systemd service (`everest.service`) that starts automatically at boot. The active configuration is selected through systemd — **not** via `manager --conf` on the command line, as in earlier releases.
 
-    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb.yaml
-    ```
+The service starts the manager with the config pointed to by the `EVEREST_CONFIG` variable in `/etc/default/everest`, which defaults to `/etc/everest/config.yaml`:
 
-* Basic charging with NFC and OCPP
+```sh
+EVEREST_CONFIG=/etc/everest/config.yaml
+```
 
-    ```sh
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
-    ```
+`/etc/everest/config.yaml` is a symlink, pointing at `config-nxp-easyevse-demo-no-ocpp.yaml` out of the box.
 
-* ISO 15118-2 EIM Charging with NFC and OCPP
+#### Default configuration
 
-    ```sh
-    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
-        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
-        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+At boot, EVerest starts `config-nxp-easyevse-demo-no-ocpp.yaml` (via the `config.yaml` symlink). This runs a charging session out of the box, with no CSMS setup required.
 
-    manager --conf /etc/everest/config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml
-    ```
+Offered (standalone, no backend needed):
 
-* ISO 15118-2 EIM with TLS 1.2
+* IEC 61851-1 basic AC (PWM fallback)
+* ISO 15118-2 AC, EIM (NFC authorization)
+* ISO 15118-20 AC, EIM and AC BPT (bidirectional)
+* NFC authorization via a built-in dummy-token validator
 
-    ```sh
-    cd /etc/everest
+Not offered:
 
-    ./gen_pki.sh -s
+* No OCPP / CSMS connection — sessions run fully standalone.
+* No ISO 15118-2 Plug & Charge — PnC requires a CSMS and contract-certificate validation, so it cannot be exercised with this config.
 
-    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
-        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
-        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+#### Full-feature configuration
 
-    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb-tls.yaml
-    ```
+The all-features config is `config-nxp-easyevse-demo.yaml` — the same protocols plus OCPP 2.0.1 (CSMS-driven authorization), which also enables ISO 15118-2 PnC. It requires a CSMS endpoint, certificates, and a provisioned IdToken before a session will run.
 
-* ISO 15118-2 Plug & Charge (PnC) charging
+#### Switching the active configuration
 
-    ```sh
-    /home/root/res/cg5317/host/host_loading_service -g gpiochip0 -o 18 \
-        -f /home/root/res/cg5317/binaries/CG5317-04.05.000.0020-DEFAULT.bin \
-        -c /home/root/res/cg5317/binaries/eth_evse_config.bin -i 1
+Choose one of the following.
 
-    manager --conf /etc/everest/config-nxp-easyevse-ISO2-sigb-ocpp201-pnc.yaml
-    ```
+**Persistent (survives reboot)** — point `EVEREST_CONFIG` at the desired config and restart the service:
+
+```sh
+sed -i 's|^EVEREST_CONFIG=.*|EVEREST_CONFIG=/etc/everest/config-nxp-easyevse-ISO20-sigb-nfc.yaml|' /etc/default/everest
+systemctl restart everest
+```
+
+**One-off (until next reboot)** — override the config for a single run without editing the default file:
+
+```sh
+systemctl stop everest
+EVEREST_CONFIG=/etc/everest/config-nxp-easyevse-ISO20-sigb-nfc.yaml manager --conf $EVEREST_CONFIG
+```
+
+Check status and logs with:
+
+```sh
+systemctl status everest
+journalctl -u everest -f
+```
+
+#### Bring-up configurations
+
+The following configs under `/etc/everest/` are **bring-up files**, not production configurations. Each enables a single charging mode and authentication/backend combination for validating one feature in isolation. Point `EVEREST_CONFIG` at one of them using either method above.
+
+| Configuration file | Charging mode | Auth | CSMS / OCPP |
+| --- | --- | --- | --- |
+| `config-nxp-easyevse-basic-sigb.yaml` | IEC 61851-1 basic AC | none | none |
+| `config-nxp-easyevse-basic-sigb-nfc.yaml` | IEC 61851-1 basic AC | EIM | none |
+| `config-nxp-easyevse-basic-sigb-nfc-ocpp201.yaml` | IEC 61851-1 basic AC | EIM | OCPP 2.0.1 |
+| `config-nxp-easyevse-basic-sigb-ocpp-dummyToken.yaml` | IEC 61851-1 basic AC | dummy token | OCPP 2.0.1 |
+| `config-nxp-easyevse-ISO2-sigb.yaml` | ISO 15118-2 AC | none | none |
+| `config-nxp-easyevse-ISO2-sigb-nfc.yaml` | ISO 15118-2 AC | EIM | none |
+| `config-nxp-easyevse-ISO2-sigb-tls.yaml` | ISO 15118-2 AC | EIM (TLS enforced) | none |
+| `config-nxp-easyevse-ISO2-sigb-ocpp201-nfc.yaml` | ISO 15118-2 AC | EIM  | OCPP 2.0.1 |
+| `config-nxp-easyevse-ISO2-sigb-ocpp201-pnc.yaml` | ISO 15118-2 AC | Plug & Charge (contract cert) | OCPP 2.0.1 |
+| `config-nxp-easyevse-ISO20-sigb-nfc.yaml` | ISO 15118-20 AC (incl. BPT) | EIM  | none |
+| `config-nxp-easyevse-ISO20-sigb-dummytoken.yaml` | ISO 15118-20 AC (incl. BPT) | dummy token | none |
+| `config-nxp-easyevse-ISO20-sigb-ocpp201-nfc.yaml` | ISO 15118-20 AC (incl. BPT) | EIM | OCPP 2.0.1|
+
+_Note (TLS):_ the image ships with the PKI on the filesystem, so the `*-tls` and PnC configs run out of the box using the software key path. Optionally back the keys with the SE050 via `cd /etc/everest && ./gen_pki.sh -s` (see [Using the SE050](#using-the-se050)). ISO 15118 TLS and PnC validate certificate validity windows, so the EVSE and EV clocks must be set correctly first.
+
+_Note (PnC):_ ISO 15118-2 Plug & Charge requires `config-nxp-easyevse-demo.yaml` (or `config-nxp-easyevse-ISO2-sigb-ocpp201-pnc.yaml`), a running CSMS, and contract certificates pre-provisioned on the EV. In a lab, a mock OCSP responder is also required — the contract certs in `everest-dev-keys` hardcode their OCSP AIA to `http://ocsp.local`. ISO 15118-20 PnC is not implemented in upstream EVerest; ISO 15118-20 sessions authenticate via EIM only. See section 8.7 of UG10357 for details.
+
+### Driving the EV from the console
+
+With the EVSE running and an EV firmware set up (above), drive a session from the EV console:
+
+* Set/Check the date first ( ISO 15118 TLS and PnC check certificate validity windows; if the clock is wrong or unset the handshake fails ). The date must be consistent with the EVSE side:
+   ```sh
+   date get
+   date set YYYY-MM-DDTHH:MM:SSZ
+   ```
+* Select protocol:
+  ```sh
+  protocol J1772/ISO15118-2/ISO15118-20
+  ```
+* Select auth method EIM (NFC) or PnC:
+  ```sh
+  auth EIM/PnC
+  ```
+* Connect CP line; assert the Control Pilot (simulate plug-in); SLAC and V2G start:
+  ```sh
+  cp connect
+  ```
+* Disconnect CP line; release the CP (simulate unplug):
+  ```sh
+  cp disconnect
+  ```
+* Begin energy transfer/Start charging session:
+  ```sh
+  charge start
+  ```
+* End energy transfer/Stop charging session:
+  ```sh
+  charge stop
+  ```
+
+_Note:_ Apply the date and protocol settings after every reboot.
 
 Dependencies
 ------------
 
+* meta-everest: <https://github.com/EVerest/EVerest/tree/main/yocto/scarthgap/meta-everest>
+* meta-nxp-evse-common: <https://github.com/nxp-imx-support/meta-nxp-evse-common-mpu>
 * meta-imx: <https://github.com/nxp-imx/meta-imx/>
+* meta-nxp-demo-experience: <https://github.com/nxp-imx-support/meta-nxp-demo-experience>
+
 
 
 Supported Boards
@@ -258,7 +331,7 @@ Reference
 * [i.MX Linux Yocto Project User's Guide](https://www.nxp.com/docs/en/user-guide/UG10164.pdf)
 * [i.MX Linux User's Guide](https://www.nxp.com/docs/en/user-guide/UG10163.pdf)
 * [i.MX Linux Reference Manual](https://www.nxp.com/docs/en/reference-manual/RM00293.pdf)
-* [EdgeLock SE05x Plug & Trust Middleware 04.05.00](https://www.nxp.com/webapp/sps/download/license.jsp?colCode=SE05x-PLUG-TRUST-MW-v04-05-00&appType=file1&DOWNLOAD_ID=null)
+* [EdgeLock SE05x Plug & Trust Middleware 04.07.01](https://www.nxp.com/webapp/Download?colCode=SE05x-PLUG-TRUST-MW&appType=license)
 * [NXP EasyEVSE EV Charging Station Development Platform for MCU User Guide](https://www.nxp.com/webapp/Download?colCode=CCEVCPGSUG)
 * [Charging Station Management
 System (CSMS) Installation and Configuration User Guide](https://www.nxp.com/doc/UG10362)
