@@ -5,7 +5,7 @@ LIC_FILES_CHKSUM = ""
 AUTHOR = "Marouene Boubakri <marouene.boubakri@nxp.com>"
 
 
-SRC_BRANCH ?= "develop/everest-mpu-2.0"
+SRC_BRANCH ?= "release/everest-mpu-2.0"
 SRC_URI = "git://git@bitbucket.sw.nxp.com/micrse/everest-dev-keys.git;branch=${SRC_BRANCH};protocol=ssh"
 
 SRCREV = "${AUTOREV}"

@@ -1,7 +1,7 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 NXP_FILES := "${THISDIR}/files"
 
-SRC_BRANCH = "develop/everest-mpu-2.0"
+SRC_BRANCH = "release/everest-mpu-2.0"
 
 SRC_URI:append = " \
     git://git@bitbucket.sw.nxp.com/micrse/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=ssh;destsuffix=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
