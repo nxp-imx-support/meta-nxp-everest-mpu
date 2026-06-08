@@ -4,7 +4,7 @@ NXP_FILES := "${THISDIR}/files"
 SRC_BRANCH = "release/everest-mpu-2.0"
 
 SRC_URI:append = " \
-    git://git@bitbucket.sw.nxp.com/micrse/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=ssh;destsuffix=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
+    git://github.com/nxp-imx-support/nxp-everest-core.git;name=sigboardnxp;branch=${SRC_BRANCH}/sigbrd2;protocol=https;destsuffix=git/modules/SigboardNXP;subpath=modules/SigboardNXP \
     file://configs/ \
     file://libnfc-configs/ \
     file://everest-core/0001-IIOTSOL1-1521-Add-support-of-NXP-SE050-Secure-Elemen.patch \

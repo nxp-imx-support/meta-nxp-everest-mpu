@@ -6,7 +6,7 @@ AUTHOR = "Marouene Boubakri <marouene.boubakri@nxp.com>"
 
 
 SRC_BRANCH ?= "release/everest-mpu-2.0"
-SRC_URI = "git://git@bitbucket.sw.nxp.com/micrse/everest-dev-keys.git;branch=${SRC_BRANCH};protocol=ssh"
+SRC_URI = "git://github.com/nxp-imx-support/everest-dev-keys.git;branch=${SRC_BRANCH};protocol=https"
 
 SRCREV = "${AUTOREV}"
 
